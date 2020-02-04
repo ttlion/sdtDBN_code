@@ -544,4 +544,12 @@ public class BayesNet {
 
 	}
 
+	public List<Integer> getParents(int i){
+		return parentNodes.get(i);
+	}
+	
+	public Map<Configuration, List<Double>> getCPT(int i){
+		return parameters.get(i);
+	}
+
 }
