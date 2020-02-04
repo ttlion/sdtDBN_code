@@ -52,4 +52,9 @@ public class NominalAttribute implements Attribute {
 		return name;
 	}
 
+	@Override
+	public boolean hasValue(String value) {
+		return values.containsValue(value);
+	}
+
 }

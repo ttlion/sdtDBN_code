@@ -52,4 +52,9 @@ public class NumericAttribute implements Attribute {
 		return name;
 	}
 
+	@Override
+	public boolean hasValue(String value) {
+		return values.containsValue(Float.parseFloat(value));
+	}
+
 }

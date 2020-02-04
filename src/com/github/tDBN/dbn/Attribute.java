@@ -30,4 +30,6 @@ public interface Attribute {
 
 	public String getName();
 
+	public boolean hasValue(String value);
+
 }
