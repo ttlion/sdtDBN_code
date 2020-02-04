@@ -297,7 +297,7 @@ public class Observations {
 			usefulObservationsHeader = processHeader(header, numAttributes);
 
 			// allocate observations matrix
-			int totalNumSubjects = lines.size();
+			int totalNumSubjects = lines.size() - 1;
 			usefulObservations = new int[numTransitions][totalNumSubjects][(markovLag + 1) * numAttributes];
 			numSubjects = new int[numTransitions];
 			subjectIsPresent = new LinkedHashMap<String, boolean[]>((int) Math.ceil(totalNumSubjects / 0.75));
