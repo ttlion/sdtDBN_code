@@ -198,16 +198,6 @@ public class Inference {
 				
 				ObservationsToInference observToInference = new ObservationsToInference(cmd.getOptionValue("obs"), markovLag, o.getAttributes());
 				
-				if (makeInferenceAtt == true) {
-					observToInference.parseAttributes(cmd.getOptionValue("inf"));
-					
-					if(definedOutputInferenceFile== true) {
-						observToInference.makeInference(stationary, dbn, cmd.getOptionValue("outputInferenceFile"));
-					} else {
-						observToInference.makeInference(stationary, dbn, null);
-					}
-				}
-				
 				if (getMostProbTraj == true) {
 					
 					int timestepMax = Integer.parseInt(cmd.getOptionValue("t", "-1"));
@@ -218,6 +208,16 @@ public class Inference {
 					
 					observToInference.getMostProbableTrajectory(timestepMax, dbn, stationary);
 					observToInference.printMostProbableTrajectory(definedTrajOutput, cmd.getOptionValue("tf"));
+				}
+				
+				if (makeInferenceAtt == true) {
+					observToInference.parseAttributes(cmd.getOptionValue("inf"));
+					
+					if(definedOutputInferenceFile== true) {
+						observToInference.makeInference(stationary, dbn, cmd.getOptionValue("outputInferenceFile"));
+					} else {
+						observToInference.makeInference(stationary, dbn, null);
+					}
 				}
 			}
 			
