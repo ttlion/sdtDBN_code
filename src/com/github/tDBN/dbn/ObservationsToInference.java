@@ -315,7 +315,7 @@ public class ObservationsToInference {
 		
 		StringBuilder sb = new StringBuilder();
 		
-		int attributeID = 0, i=0, transitionNetID = 0;
+		int attributeID = 0, i=0, transitionNetID = 0, attToPrintDim = 0;
 		
 		int configs[][] = new int[usefulObservations[0].length][(markovLag + 1) * attributes.size()]; // Tem que ter todos os att do mesmo instante e os de tras necessarios consoante markovLag
 		Configuration desiredConfigs[] = new Configuration[usefulObservations[0].length];
@@ -325,6 +325,7 @@ public class ObservationsToInference {
 		List<Double> distribution;
 		double count;
 		int canMakeInference[] = new int[usefulObservations[0].length];
+		Attribute attToPrint;
 		
 		for(int[] infLine : inferenceAtts) {
 			attributeID = infLine[0];
@@ -333,14 +334,14 @@ public class ObservationsToInference {
 			System.out.println("\n\nDetermining " + attributes.get(attributeID).getName() + "[" + (transitionNetID+markovLag) + "]" );
 			
 			if(transitionNetID < 0) {
-				sb.append("\nDistributions of node " + attributes.get(attributeID).getName() + "[" + (transitionNetID+markovLag) + "]:\n");
-				sb.append("Not possible to determine because timestep " + (transitionNetID+markovLag) + " < markovLag\n");
+				sb.append("Distributions " + attributes.get(attributeID).getName() + "[" + (transitionNetID+markovLag) + "]:\n");
+				sb.append("Not possible to determine because timestep " + (transitionNetID+markovLag) + " < markovLag\n\n");
 				continue;
 			}
 			
 			if(stationary == false && transitionNetID >= dbn.getNumberTransitionNets()) { // Not possible to make inference in this case
-				sb.append("\nDistributions of node " + attributes.get(attributeID).getName() + "[" + (transitionNetID+markovLag) + "]:\n");
-				sb.append("Not possible to determine because non-stationary DBN only until timestep " + (dbn.getNumberTransitionNets()+markovLag-1) + "\n");
+				sb.append("Distributions " + attributes.get(attributeID).getName() + "[" + (transitionNetID+markovLag) + "]:\n");
+				sb.append("Not possible to determine because non-stationary DBN only until timestep " + (dbn.getNumberTransitionNets()+markovLag-1) + "\n\n");
 				continue;
 			}
 
@@ -394,17 +395,25 @@ public class ObservationsToInference {
 			}
 			
 			// Imprimir atributo e instante temporal que se esta a fazer inferencia e os seus valores possiveis
-			sb.append("\nDistributions of node " + attributes.get(attributeID).getName() + "[" + (transitionNetID+markovLag) + "]:\n");
-			sb.append("Posssible values: " + attributes.get(attributeID)+ "\n");
+			sb.append("Distributions " + attributes.get(attributeID).getName() + "[" + (transitionNetID+markovLag) + "]:\n");
+			sb.append("id");
+			
+			attToPrint = attributes.get(attributeID);
+			for(attToPrintDim = 0 ; attToPrintDim < attToPrint.size(); attToPrintDim++) {
+				sb.append("," + attToPrint.get(attToPrintDim));
+			}
+			sb.append("\n");
 			
 			// Para cada caso, obter a linha correta da CPT, de acordo com a configuracao dos pais, que esta em desiredConfig
 			i=-1;
 			for(Configuration desiredConfig : desiredConfigs) {
 				
 				i++;
-				sb.append("\tDistribution subject " + subjects[i] + ": [");
+				sb.append(subjects[i]);
 				if(canMakeInference[i] == -1 ) {
-					sb.append("Cannot make inference because one of the parents was not specified]\n");
+					for(int k=0; k<attToPrintDim; k++) sb.append(",-1");
+					
+					sb.append("\n");
 					continue;
 				}
 				
@@ -412,11 +421,12 @@ public class ObservationsToInference {
 				
 				count = 0.0; 
 				for(double d : distribution) {
-					sb.append(String.format("%.3f, ", d));
+					sb.append(String.format(",%.3f", d));
 					count += d;
 				}
-				sb.append(String.format("%.3f]\n", 1.0-count));
+				sb.append(String.format(",%.3f\n", 1.0-count));
 			}
+			sb.append("\n");
 		}
 		
 		if(fileToWrite != null) {
