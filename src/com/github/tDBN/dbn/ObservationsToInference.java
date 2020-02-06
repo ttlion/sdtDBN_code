@@ -151,6 +151,17 @@ public class ObservationsToInference {
 					numSubjects[t]++;
 				}
 			}
+			
+//			System.out.println("Matrix Criada!!:");
+//			for(int[][] matriz: usefulObservations) {
+//				for(int[] linha : matriz) {
+//					for(int valor : linha){
+//						System.out.print(valor + " ");
+//					}
+//					System.out.println();
+//				}
+//				System.out.println();
+//			}
 
 		} catch (IOException e) {
 			System.err.println("File " + observationsFileName + " could not be opened.");
@@ -226,13 +237,9 @@ public class ObservationsToInference {
 		return true;
 	}
 	
-	public int[][][] getObservationsMatrix() {
-		return usefulObservations;
-	}
-	
 	public void parseAttributes(String attFileName) {
 		
-		int timestepMaxDesired = -1;
+		int newMatrixDimension = -1;
 		
 		try {
 			// open and parse the observations csv file
@@ -263,16 +270,18 @@ public class ObservationsToInference {
 							break;
 						}
 						
-						if(desiredtimestep > usefulObservations.length) {
-							if(desiredtimestep > timestepMaxDesired)
-								timestepMaxDesired = desiredtimestep;
+						if(desiredtimestep < 0) break;
+
+						if( (desiredtimestep - markovLag + 1) > usefulObservations.length) {
+								if((desiredtimestep - markovLag + 1) > newMatrixDimension) {
+									newMatrixDimension = desiredtimestep - markovLag + 1;
+									//System.out.println("Nova Dimensao!!: " + newMatrixDimension);
+								}
 						}
-						
-						if(desiredtimestep<1 ) break;
-						
+
 						found=3; // 3 = success
 						inferenceAtts[i][0] = attributes.indexOf(att);
-						inferenceAtts[i][1] = desiredtimestep - 1;
+						inferenceAtts[i][1] = desiredtimestep;
 						
 					}
 				}
@@ -284,14 +293,14 @@ public class ObservationsToInference {
 					System.out.println("File with variables to make inference is not in proper format, timestep not an integer!");
 					System.exit(1);
 				} else if (found == 2) {
-					System.out.println("File with variables to make inference is not in proper format, timestep not valid!");
+					System.out.println("File with variables to make inference is not in proper format, negative timesteps not valid!");
 					System.exit(1);
 				}
 				
 			}
 			
-			if(timestepMaxDesired!=-1) // E necessario aumentar a matriz das observacoes para ter os novos timesteps desejados
-				usefulObservations = increaseObservationMatrix(usefulObservations, timestepMaxDesired);
+			if(newMatrixDimension!=-1) // E necessario aumentar a matriz das observacoes para ter os novos timesteps desejados
+				usefulObservations = increaseObservationMatrix(usefulObservations, newMatrixDimension);
 			
 		} catch (IOException e) {
 			System.err.println("File " + attFileName + " could not be opened.");
@@ -306,7 +315,7 @@ public class ObservationsToInference {
 		
 		StringBuilder sb = new StringBuilder();
 		
-		int attributeID = 0, timestep = 0, i=0;
+		int attributeID = 0, i=0, transitionNetID = 0;
 		
 		int configs[][] = new int[usefulObservations[0].length][(markovLag + 1) * attributes.size()]; // Tem que ter todos os att do mesmo instante e os de tras necessarios consoante markovLag
 		Configuration desiredConfigs[] = new Configuration[usefulObservations[0].length];
@@ -319,46 +328,64 @@ public class ObservationsToInference {
 		
 		for(int[] infLine : inferenceAtts) {
 			attributeID = infLine[0];
-			timestep = infLine[1];
-		
+			transitionNetID = infLine[1] - markovLag;
+			
+			System.out.println("\n\nDetermining " + attributes.get(attributeID).getName() + "[" + (transitionNetID+markovLag) + "]" );
+			
+			if(transitionNetID < 0) {
+				sb.append("\nDistributions of node " + attributes.get(attributeID).getName() + "[" + (transitionNetID+markovLag) + "]:\n");
+				sb.append("Not possible to determine because timestep " + (transitionNetID+markovLag) + " < markovLag\n");
+				continue;
+			}
+			
+			if(stationary == false && transitionNetID >= dbn.getNumberTransitionNets()) { // Not possible to make inference in this case
+				sb.append("\nDistributions of node " + attributes.get(attributeID).getName() + "[" + (transitionNetID+markovLag) + "]:\n");
+				sb.append("Not possible to determine because non-stationary DBN only until timestep " + (dbn.getNumberTransitionNets()+markovLag-1) + "\n");
+				continue;
+			}
+
 			// Obter a CPT correta relativa ao atributo em questao na transicao em questao
 			if (stationary == true) {
 				cpt = dbn.getTransitionNet(0).getCPT(attributeID);
 			} else {
-				cpt = dbn.getTransitionNet(timestep).getCPT(attributeID);
+				cpt = dbn.getTransitionNet(transitionNetID).getCPT(attributeID);
 			}
 			
 			// Obter todos os pais
 			if (stationary == true) {
 				parents = dbn.getTransitionNet(0).getParents(attributeID);
 			} else {
-				parents = dbn.getTransitionNet(timestep).getParents(attributeID);
+				parents = dbn.getTransitionNet(transitionNetID).getParents(attributeID);
 			}
 			
 			// Inicializar os valores dos atributos (-1 se nao e pai, 0 se proprio attributo)
 			for(int[] line : configs) {
 				for(i=0; i<line.length; i++)
-					line[i] = -1; // Por default meter que atributo nao é pai, os pais serao postos num ciclo a seguir
+					line[i] = -1; // Por default meter que atributo nao ï¿½ pai, os pais serao postos num ciclo a seguir
 				
 				line[attributes.size() * markovLag + attributeID] = 0; // O proprio no child tem que ter 0 na sua posicao
 			}
 			
 			i=-1;
-			for(int[] observation : usefulObservations[timestep]) {
+			for(int[] observation : usefulObservations[transitionNetID]) {
 				i++;
 				
 				canMakeInference[i] = 0;
-				System.out.println("Values for subject " + i + ": ");
+				//System.out.println("Values for subject " + i + ": ");
 				for(Integer parent : parents) {
 					
 					if(observation[parent]<0) {
-						dbn.getMostProbable(timestep - markovLag + parent/(attributes.size()), parent%(attributes.size()), stationary, usefulObservations, i);
-						System.out.println("estimado " + attributes.get(parent%(attributes.size())).getName() + "[" + (timestep - markovLag + parent/(attributes.size())+1) + "]");
-						System.out.println("parent: " + parent);
+						//System.out.println("CALLING MOST PROBABLE WITH (netID=" + (transitionNetID + parent/(attributes.size()) - markovLag) + ", attID=" + parent%(attributes.size()) + ", " + stationary + ", tag= " + i + ")");
+						dbn.getMostProbable(transitionNetID + parent/(attributes.size()) - markovLag, parent%(attributes.size()), stationary, usefulObservations, i);
 					}
 					
 					configs[i][parent] = observation[parent];
-					System.out.println("\tParent " + parent + " -- Value: " + observation[parent]);
+					//System.out.println("\tParent " + attributes.get(parent%(attributes.size())).getName() + "[" + (transitionNetID + parent/(attributes.size())) + "]" + " -- Value: " + observation[parent]);
+					
+					if(configs[i][parent] < 0) { // Nao foi possivel prever porque nao havia rede
+						canMakeInference[i] = -1;
+						break;
+					}
 				}
 				
 				// Configuration e feita com a configs[i], que representa a configuracao dos pais no caso que se esta a testar
@@ -367,7 +394,7 @@ public class ObservationsToInference {
 			}
 			
 			// Imprimir atributo e instante temporal que se esta a fazer inferencia e os seus valores possiveis
-			sb.append("\nDistributions of node " + attributes.get(attributeID).getName() + "[" + (timestep+1) + "]:\n");
+			sb.append("\nDistributions of node " + attributes.get(attributeID).getName() + "[" + (transitionNetID+markovLag) + "]:\n");
 			sb.append("Posssible values: " + attributes.get(attributeID)+ "\n");
 			
 			// Para cada caso, obter a linha correta da CPT, de acordo com a configuracao dos pais, que esta em desiredConfig
@@ -378,9 +405,6 @@ public class ObservationsToInference {
 				sb.append("\tDistribution subject " + subjects[i] + ": [");
 				if(canMakeInference[i] == -1 ) {
 					sb.append("Cannot make inference because one of the parents was not specified]\n");
-					continue;
-				} else if (canMakeInference[i] == -2) {
-					sb.append("All probabilities 0 because one of parents has a value that never appeared in training]\n");
 					continue;
 				}
 				
@@ -406,72 +430,79 @@ public class ObservationsToInference {
 		}
 	}
 	
-	private int[][][] increaseObservationMatrix(int[][][] currentMatrix, int newMaxTimesteps) {
+	private int[][][] increaseObservationMatrix(int[][][] currentMatrix, int newMatrixDimension) {
 		
-		int i, j;
-		int timestep, subject, att;
+		int transitionNetID, subject, att, n = attributes.size();
 		
-		int [][][] auxMatrix = new int[newMaxTimesteps][subjects.length][(markovLag + 1) * attributes.size()];
+		int [][][] auxMatrix = new int[newMatrixDimension][subjects.length][(markovLag + 1) * n];
 		
-		for(i=0; i<currentMatrix.length; i++)
-			for(j=0; j<subjects.length; j++)
-				System.arraycopy(currentMatrix[i][j], 0, auxMatrix[i][j], 0, (markovLag + 1) * attributes.size());
+		for(transitionNetID=0; transitionNetID<currentMatrix.length; transitionNetID++)
+			for(subject=0; subject<subjects.length; subject++)
+				System.arraycopy(currentMatrix[transitionNetID][subject], 0, auxMatrix[transitionNetID][subject], 0, (markovLag + 1) * n);
 		
-		for(timestep=currentMatrix.length; timestep < newMaxTimesteps; timestep++) // Fill with -1 the new positions
+		for(transitionNetID=currentMatrix.length; transitionNetID < newMatrixDimension; transitionNetID++) // Fill with -1 the new positions
 			for(subject=0; subject < subjects.length; subject++)
-				for(att=0; att < (markovLag + 1) * attributes.size(); att++)
-					auxMatrix[timestep][subject][att] = -1;
+				for(att=0; att < (markovLag + 1) * n; att++)
+					auxMatrix[transitionNetID][subject][att] = -1;
+		
+		int maxNetIDtoProp = Math.min((currentMatrix.length + markovLag), newMatrixDimension);
 		
 		// Propagar valores passados para as outras matrizes de observacoes
-		for(timestep = currentMatrix.length; timestep < newMaxTimesteps; timestep++) {
+		for(transitionNetID = currentMatrix.length; transitionNetID < maxNetIDtoProp; transitionNetID++) {
 			for(subject=0; subject < subjects.length; subject++) {
-				for(att=0; att < markovLag * attributes.size(); att++) { // So vai ate aos que nao sao deste timestep
-					auxMatrix[timestep][subject][att] = auxMatrix[timestep - markovLag + att/(attributes.size()) ][subject][attributes.size() * markovLag + att%(attributes.size())];
+				for(att=0; att < markovLag * n; att++) { // So vai ate aos que nao sao deste timestep
+					auxMatrix[transitionNetID][subject][att] = auxMatrix[transitionNetID - 1][subject][att + n];
 				}
 			}
 		}
+		
+//		System.out.println("Nova Matriz aumentada!!:");
+//		for(int[][] matriz: auxMatrix) {
+//			for(int[] linha : matriz) {
+//				for(int valor : linha){
+//					System.out.print(valor + " ");
+//				}
+//				System.out.println();
+//			}
+//			System.out.println();
+//		}
 		
 		return auxMatrix;
 	}
 	
 	public void getMostProbableTrajectory(int timestepMax, DynamicBayesNet dbn, boolean stationary) {
 		
-		int timestep, subject, att;
+		int transitionNetID, subject, att;
+		
+		int maxNumTransNet = timestepMax - markovLag + 1;
 		
 		if(stationary == false) {
-			if(timestepMax > dbn.getNumberTransitionNets()) {
-				System.err.println("Cannot predict until timestep " + timestepMax + " because DBN learnt only has " + dbn.getNumberTransitionNets() +" timesteps!");
+			if(maxNumTransNet > dbn.getNumberTransitionNets()) {
+				System.err.println("Cannot predict until timestep " + timestepMax + " because non-stationary DBN learnt with markovLag=" + markovLag + " only has " + dbn.getNumberTransitionNets() +" transition networks!");
 				System.exit(1);
 			}
 		}
 		
-		matrixWithAllPredictions = increaseObservationMatrix(usefulObservations, timestepMax);
+		if(maxNumTransNet > usefulObservations.length) {
+			matrixWithAllPredictions = increaseObservationMatrix(usefulObservations, maxNumTransNet);
+		} else {
+			matrixWithAllPredictions = usefulObservations;
+		}
 		
 		// Predict all nodes where the are still observations
-		for(timestep=0; timestep < usefulObservations.length; timestep++)
+		for(transitionNetID=0; transitionNetID < usefulObservations.length; transitionNetID++)
 			for(subject=0; subject < subjects.length; subject++)
 				for(att=0; att < (markovLag + 1) * attributes.size(); att++)
-					if(matrixWithAllPredictions[timestep][subject][att] < 0) // Case where value not given in original data
-						dbn.getMostProbable(timestep - markovLag + att/(attributes.size()), att%(attributes.size()), stationary, matrixWithAllPredictions, subject);
+					if(matrixWithAllPredictions[transitionNetID][subject][att] < 0) // Case where value not given in original data
+						dbn.getMostProbable(transitionNetID + att/(attributes.size()) - markovLag, att%(attributes.size()), stationary, matrixWithAllPredictions, subject);
+		
+		if(maxNumTransNet <= usefulObservations.length) return;
 		
 		// Predict all values of remaining timesteps
-		for(timestep=usefulObservations.length; timestep < timestepMax; timestep++)
+		for(transitionNetID=usefulObservations.length; transitionNetID < maxNumTransNet; transitionNetID++)
 			for(subject=0; subject < subjects.length; subject++)
 				for(att=0; att < (markovLag + 1) * attributes.size(); att++)
-					dbn.getMostProbable(timestep - markovLag + att/(attributes.size()), att%(attributes.size()), stationary, matrixWithAllPredictions, subject);
-						
-
-		System.out.println("Matrix obtidaaaaa:");
-		for(int[][] matriz: matrixWithAllPredictions) {
-			for(int[] linha : matriz) {
-				for(int valor : linha){
-					System.out.print(valor + " ");
-				}
-				System.out.println();
-			}
-			System.out.println();
-			System.out.println();
-		}
+					dbn.getMostProbable(transitionNetID + att/(attributes.size()) - markovLag, att%(attributes.size()), stationary, matrixWithAllPredictions, subject);
 		
 	}
 	
@@ -498,15 +529,15 @@ public class ObservationsToInference {
 		
 		StringBuilder sb = new StringBuilder();
 		String ls = System.getProperty("line.separator");
-		int numTransitions = desiredMatrix.length;
+		int numTransitions = desiredMatrix.length + markovLag;
 		int numAttributes = attributes.size();
 		int numSubjects = subjects.length;
-		int transition, att, subject;
+		int transition, att, subject, transitionNetID;
 		int startCurrentAtt = markovLag*attributes.size();
 		
 		// Create header line
 		sb.append("id");
-		for (transition = 0; transition <= numTransitions; transition++) {
+		for (transition = 0; transition < numTransitions; transition++) {
 			for (att=0; att < numAttributes; att++) {
 				sb.append(","+ attributes.get(att).getName() +"__"+transition);
 			}
@@ -517,22 +548,22 @@ public class ObservationsToInference {
 		for(subject=0; subject<numSubjects;  subject++ ) {
 			sb.append(subjects[subject]);
 			
-			// Create 1st transition
-			for (att=0; att < numAttributes; att++) {
+			// Create 1st markovLag transitions
+			for (att=0; att < numAttributes * markovLag; att++) {
 				if(desiredMatrix[0][subject][att]<0) {
 					sb.append(",");
 				} else {
-					sb.append(","+   attributes.get(att).get(desiredMatrix[0][subject][att]));
+					sb.append(","+   attributes.get(att%numAttributes).get(desiredMatrix[0][subject][att]));
 				}
 			}
 			
 			// Create remaining transitions
-			for (transition = 0; transition < numTransitions; transition++) {
-				for (att=0; att < numAttributes; att++) {
-					if(desiredMatrix[transition][subject][startCurrentAtt+att]<0){
+			for (transitionNetID = 0; transitionNetID < desiredMatrix.length; transitionNetID++) {
+				for (att = startCurrentAtt; att < numAttributes*(markovLag+1); att++) {
+					if(desiredMatrix[transitionNetID][subject][att]<0){
 						sb.append(",");
 					} else {
-						sb.append(","+   attributes.get(att).get(desiredMatrix[transition][subject][startCurrentAtt+att]));
+						sb.append(","+   attributes.get(att%numAttributes).get(desiredMatrix[transitionNetID][subject][att]));
 					}
 				}
 			}
