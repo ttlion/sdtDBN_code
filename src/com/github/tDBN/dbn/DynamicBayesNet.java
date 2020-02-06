@@ -310,67 +310,74 @@ public class DynamicBayesNet {
 
 	}
 
-	public void getMostProbable(int timestep, int attributeID, boolean stationary, int[][][] observations, int subject) {
+	public void getMostProbable(int transitionNetID, int attributeID, boolean stationary, int[][][] observations, int subject) {
 		
+		if(transitionNetID<0) return; // Neste caso nao se conseguira prever nada porque timestep do no e menor do que markovLag
+
 		int n = attributes.size(), i=0, value;
-		int config[] = new int[(markovLag + 1) * attributes.size()];
+		int config[] = new int[(markovLag + 1) * n];
 		Configuration desiredConfig;
 		List<Double> distribution;
 		Map<Configuration, List<Double>> cpt;
 		double sum;
-		
+		boolean allParentsSpecified;
 		
 		// Obter todos os pais
 		List<Integer> parents;
 		if (stationary == true) {
 			parents = this.getTransitionNet(0).getParents(attributeID);
 		} else {
-			parents = this.getTransitionNet(timestep).getParents(attributeID);
+			parents = this.getTransitionNet(transitionNetID).getParents(attributeID);
 		}
 		
 		Stack<Integer> stackAttID = new Stack<Integer>();
 		Stack<Integer> stackTimesteps = new Stack<Integer>();
 		
-		if(observations[timestep][subject][attributeID + n*markovLag] < 0 ) {
-			System.out.println("Pondo na STACKaaaaaa: " + attributes.get(attributeID).getName() + "[" + (timestep+1) + "]");
+		if(observations[transitionNetID][subject][attributeID + n*markovLag] < 0 ) {
+			//System.out.println("Pondo na STACKaaaaaa: " + attributes.get(attributeID).getName() + "[" + (transitionNetID+markovLag) + "]");
 			stackAttID.push(attributeID);
-			stackTimesteps.push(timestep);
+			stackTimesteps.push(transitionNetID);
 		}
 
 		for(Integer parent : parents) {
-			if(observations[timestep][subject][parent] < 0) {
-				System.out.println("Pondo na STACK: " + attributes.get(parent%n).getName() + "[" + (timestep - markovLag + parent/n +1) + "]");
+			if(observations[transitionNetID][subject][parent] < 0) {
+				
+				if(transitionNetID + parent/n - markovLag < 0) return; // Nao e possivel prever este pai, entao abortar
+					
+				//System.out.println("Pondo na STACK: " + attributes.get(parent%n).getName() + "[" + (transitionNetID + parent/n) + "]");
 				stackAttID.push(parent%n);
-				stackTimesteps.push(timestep - markovLag + parent/n);
+				stackTimesteps.push(transitionNetID + parent/n - markovLag);
 			}
 		}
 		
-		boolean allParentsSpecified;
 		while(stackAttID.isEmpty() == false) {
 			
 			attributeID = stackAttID.peek();
-			timestep = stackTimesteps.peek();
-			System.out.println("Olhando na STACK: " + attributes.get(attributeID).getName() + "[" + (timestep+1) + "]");
+			transitionNetID = stackTimesteps.peek();
+			//System.out.println("Olhando na STACK: " + attributes.get(attributeID).getName() + "[" + (transitionNetID+markovLag) + "]");
 			
-			if ( observations[timestep][subject][attributes.size() * markovLag + attributeID] >=0) {
-				System.out.println("Ja estava preenchido! Tirando da STACK: " + attributes.get(attributeID).getName() + "[" + (timestep+1) + "]");
+			if ( observations[transitionNetID][subject][n * markovLag + attributeID] >= 0) {
+				//System.out.println("Ja estava preenchido! Tirando da STACK: " + attributes.get(attributeID).getName() + "[" + (transitionNetID+markovLag) + "]");
 				attributeID = stackAttID.pop();
-				timestep = stackTimesteps.pop();
+				transitionNetID = stackTimesteps.pop();
 				continue;
 			}
 			
 			if (stationary == true) {
 				parents = this.getTransitionNet(0).getParents(attributeID);
 			} else {
-				parents = this.getTransitionNet(timestep).getParents(attributeID);
+				parents = this.getTransitionNet(transitionNetID).getParents(attributeID);
 			}
 			
 			allParentsSpecified = true;
 			for(Integer parent : parents) {
-				if(observations[timestep][subject][parent] < 0) {
-					System.out.println("Pondo na STACK: " + attributes.get(attributeID).getName() + "[" + (timestep+1) + "]");
+				if(observations[transitionNetID][subject][parent] < 0) {
+					
+					if(transitionNetID + parent/n - markovLag < 0) return; // Nao e possivel prever este pai, entao abortar
+					
+					//System.out.println("Pondo na STACK: " + attributes.get(parent%n).getName() + "[" + (transitionNetID + parent/n) + "]");
 					stackAttID.push(parent%n);
-					stackTimesteps.push(timestep - markovLag + parent/n);
+					stackTimesteps.push(transitionNetID + parent/n - markovLag);
 					allParentsSpecified = false;
 				}
 			}
@@ -379,21 +386,18 @@ public class DynamicBayesNet {
 				continue;
 			} else {
 				attributeID = stackAttID.pop();
-				timestep = stackTimesteps.pop();
+				transitionNetID = stackTimesteps.pop();
 				
-				System.out.println("Tirando da STACK: " + attributes.get(attributeID).getName() + "[" + (timestep+1) + "]");
+				//System.out.println("Tirando da STACK: " + attributes.get(attributeID).getName() + "[" + (transitionNetID+markovLag) + "]");
 				
 				// Inicializar os valores dos atributos (-1 se nao e pai, 0 se proprio attributo)
 				for(i=0; i<config.length; i++)
-					config[i] = -1; // Por default meter que atributo nao � pai, os pais serao postos num ciclo a seguir
+					config[i] = -1; // Por default meter que atributo nao e pai, os pais serao postos num ciclo a seguir
 				
 				config[n * markovLag + attributeID] = 0; // O proprio no child tem que ter 0 na sua posicao
 				
-				for(Integer parent : parents) {
-					
-					config[parent] = observations[timestep][subject][parent];
-//					System.out.println("\tParent " + parent + " -- Value: " + observations[timestep][subject][parent]);
-				}
+				for(Integer parent : parents) 
+					config[parent] = observations[transitionNetID][subject][parent];
 				
 				desiredConfig = new Configuration(attributes, config);
 				
@@ -401,35 +405,27 @@ public class DynamicBayesNet {
 				if (stationary == true) {
 					cpt = this.getTransitionNet(0).getCPT(attributeID);
 				} else {
-					cpt = this.getTransitionNet(timestep).getCPT(attributeID);
+					cpt = this.getTransitionNet(transitionNetID).getCPT(attributeID);
 				}
-				
-				System.out.println("CPT: " + cpt);
 				
 				distribution = cpt.get(desiredConfig);
 				
-				sum = 0; for(Double d : distribution) sum += d;
+				sum = 0; for(double d : distribution) sum += d;
 				
 				distribution.add(1.0-sum);
-				
-				System.out.println("Valores: " + attributes.get(attributeID));
-				System.out.println("distribuicao: " + distribution);
 				
 				value = distribution.indexOf(Collections.max(distribution));
 				
 				distribution.remove(distribution.size()-1);
 				
-				observations[timestep][subject][attributes.size() * markovLag + attributeID]  = value; // Meter valor no timestep que se esta a analisar
+				observations[transitionNetID][subject][n * markovLag + attributeID]  = value; // Meter valor no timestep que se esta a analisar
 				
-				System.out.println("Valor escolhido: " + attributes.get(attributeID).get(observations[timestep][subject][attributes.size() * markovLag + attributeID]));
-				
-				System.out.println("Sitio onde se pos valor: [" + timestep + "]" + "[" + subject + "]" + "[" + (attributes.size() * markovLag + attributeID) + "]");
+				//System.out.println("Valor escolhido: " + attributes.get(attributeID).get(value));
 				
 				// Propagar valor para as outras matrizes de observacoes
-				for(i=1; i<(markovLag+1); i++) {
-					if (timestep+i >= observations.length) break;
-					observations[timestep+i][subject][attributes.size() * (markovLag-i) + attributeID] = observations[timestep][subject][attributes.size() * markovLag + attributeID];
-					System.out.println("Sitio onde se pos valor: [" + (timestep+i) + "]" + "[" + subject + "]" + "[" + (attributes.size() * (markovLag-i) + attributeID) + "]");
+				for(i=1; i < (markovLag+1); i++) {
+					if (transitionNetID+i >= observations.length) break;
+					observations[transitionNetID+i][subject][n * (markovLag-i) + attributeID] = value;
 				}
 				
 			}
