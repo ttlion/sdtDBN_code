@@ -4,6 +4,7 @@ import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.ListIterator;
 import java.util.Map;
@@ -61,6 +62,7 @@ public class ObservationsToInference {
 	private int inferenceAtts[][];
 	private String subjects[];
 	private int matrixWithAllPredictions[][][];
+	private String mostProbable[][];
 	
 	
 	public ObservationsToInference(String obsFileName, Integer markovLag, List<Attribute> inputAttributes) {
@@ -302,6 +304,8 @@ public class ObservationsToInference {
 			if(newMatrixDimension!=-1) // E necessario aumentar a matriz das observacoes para ter os novos timesteps desejados
 				usefulObservations = increaseObservationMatrix(usefulObservations, newMatrixDimension);
 			
+			mostProbable = new String[subjects.length][inferenceAtts.length];
+			
 		} catch (IOException e) {
 			System.err.println("File " + attFileName + " could not be opened.");
 			e.printStackTrace();
@@ -311,11 +315,11 @@ public class ObservationsToInference {
 	}
 	
 	
-	public void makeInference(boolean stationary, DynamicBayesNet dbn, String fileToWrite) {
+	public void makeInference(boolean stationary, DynamicBayesNet dbn, String fileToWrite, boolean presentDistr) {
 		
 		StringBuilder sb = new StringBuilder();
 		
-		int attributeID = 0, i=0, transitionNetID = 0, attToPrintDim = 0;
+		int attributeID = 0, i=0, transitionNetID = 0, attToPrintDim = 0, currLineIndx=0, maxProbIndx;
 		
 		int configs[][] = new int[usefulObservations[0].length][(markovLag + 1) * attributes.size()]; // Tem que ter todos os att do mesmo instante e os de tras necessarios consoante markovLag
 		Configuration desiredConfigs[] = new Configuration[usefulObservations[0].length];
@@ -323,11 +327,15 @@ public class ObservationsToInference {
 		List<Integer> parents;
 		Map<Configuration, List<Double>> cpt;
 		List<Double> distribution;
-		double count;
+		double count, maxProb;
 		int canMakeInference[] = new int[usefulObservations[0].length];
 		Attribute attToPrint;
+		String valueToStore = null;
 		
+		currLineIndx=-1;
 		for(int[] infLine : inferenceAtts) {
+			currLineIndx++;
+			
 			attributeID = infLine[0];
 			transitionNetID = infLine[1] - markovLag;
 			
@@ -414,6 +422,9 @@ public class ObservationsToInference {
 					for(int k=0; k<attToPrintDim; k++) sb.append(",-1");
 					
 					sb.append("\n");
+					
+					mostProbable[i][currLineIndx] = null;
+					
 					continue;
 				}
 				
@@ -425,9 +436,23 @@ public class ObservationsToInference {
 					count += d;
 				}
 				sb.append(String.format(",%.3f\n", 1.0-count));
+				
+				maxProb = Collections.max(distribution);
+				maxProbIndx = distribution.indexOf(maxProb);
+				
+				if(maxProb < (1.0-count))
+					maxProbIndx = attToPrintDim-1;
+				
+				valueToStore = attributes.get(attributeID).get(maxProbIndx);
+				
+				mostProbable[i][currLineIndx] = valueToStore;
 			}
 			sb.append("\n");
 		}
+		
+		if (presentDistr == false )
+			sb = MostProbableValuesFromInference();
+		
 		
 		if(fileToWrite != null) {
 			try {
@@ -581,6 +606,32 @@ public class ObservationsToInference {
 		}
 		
 		return sb.toString();
+	}
+	
+	private StringBuilder MostProbableValuesFromInference() {
+		
+		if (mostProbable==null || inferenceAtts==null) {
+			System.out.println("Must call before the proper methods to create and fill the most probable values for the desired attributes!");
+			return null;
+		}
+		
+		StringBuilder sb = new StringBuilder();
+		
+		sb.append("id");
+		for(int infAtt[] : inferenceAtts)
+			sb.append(","+ attributes.get(infAtt[0]).getName() + "[" + infAtt[1] + "]");
+		sb.append("\n");
+		
+		int i=0;
+		for(String[] linha : mostProbable) {
+			sb.append(subjects[i++]);
+			for(String valor : linha){
+				sb.append("," + valor);
+			}
+			sb.append("\n");
+		}
+		
+		return sb;
 	}
 	
 }

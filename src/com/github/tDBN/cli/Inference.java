@@ -76,14 +76,18 @@ public class Inference {
 
 		Option parameters = OptionBuilder.withDescription("Learns and outputs the network parameters.")
 				.withLongOpt("parameters").create("pm");
+		
+		Option newObservation = OptionBuilder.withArgName("file").hasArg()
+				.withDescription("File with the observations where inference should be done")
+				.withLongOpt("obsFile").create("obs");
 
 		Option inferenceFile = OptionBuilder.withArgName("file").hasArg()
 				.withDescription("File with variables to perform inference on")
 				.withLongOpt("inferenceFile").create("inf");
 		
-		Option newObservation = OptionBuilder.withArgName("file").hasArg()
-				.withDescription("File with the observations where inference should be done")
-				.withLongOpt("obsFile").create("obs");
+		Option inferenceFormat = OptionBuilder.withArgName("file").hasArg()
+				.withDescription("Format to present inference. Can be mostProb or distrib, to give only the most probable value or the full distribution, for each attribute specified. Default is mostProb.")
+				.withLongOpt("inferenceFormat").create("infFmt");
 		
 		Option outputInferenceFile = OptionBuilder.withArgName("file").hasArg()
 				.withDescription("File to write the inference performed")
@@ -113,6 +117,7 @@ public class Inference {
 		options.addOption(outputTrajectoryFile);
 		options.addOption(trajMaxTimestep);
 		options.addOption(outputInferenceFile);
+		options.addOption(inferenceFormat);
 
 		CommandLineParser parser = new GnuParser();
 		try {
@@ -128,6 +133,7 @@ public class Inference {
 			boolean getMostProbTraj = cmd.hasOption("trajectory");
 			boolean definedTrajOutput = cmd.hasOption("outputTrajectoryFile");
 			boolean definedOutputInferenceFile = cmd.hasOption("outputInferenceFile");
+			boolean definedinferenceFormat = cmd.hasOption("inferenceFormat");
 
 			// TODO: check sanity
 			int markovLag = Integer.parseInt(cmd.getOptionValue("m", "1"));
@@ -196,6 +202,9 @@ public class Inference {
 					System.exit(1);
 				}
 				
+				if(printParameters == false) // Parameters were not learned before so they should be now to perform inference
+					dbn.learnParameters(o);
+				
 				ObservationsToInference observToInference = new ObservationsToInference(cmd.getOptionValue("obs"), markovLag, o.getAttributes());
 				
 				if (getMostProbTraj == true) {
@@ -210,14 +219,20 @@ public class Inference {
 					observToInference.printMostProbableTrajectory(definedTrajOutput, cmd.getOptionValue("tf"));
 				}
 				
+				boolean presentDistr = false;
+				
 				if (makeInferenceAtt == true) {
 					observToInference.parseAttributes(cmd.getOptionValue("inf"));
 					
+					if(definedinferenceFormat == true && cmd.getOptionValue("inferenceFormat").equalsIgnoreCase("distrib") )
+						presentDistr = true;
+					
 					if(definedOutputInferenceFile== true) {
-						observToInference.makeInference(stationary, dbn, cmd.getOptionValue("outputInferenceFile"));
+						observToInference.makeInference(stationary, dbn, cmd.getOptionValue("outputInferenceFile"), presentDistr);
 					} else {
-						observToInference.makeInference(stationary, dbn, null);
+						observToInference.makeInference(stationary, dbn, null, presentDistr);
 					}
+						
 				}
 			}
 			
