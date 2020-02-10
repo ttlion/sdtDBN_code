@@ -10,6 +10,8 @@ import com.github.tDBN.utils.Utils;
 public class Scores {
 
 	private Observations observations;
+	
+	private ObservationsStatic observStatic;
 
 	/**
 	 * scoresMatrix[t][i][j] is the score of the arc
@@ -23,6 +25,8 @@ public class Scores {
 	 * X[t+markovLag] to X[t+markovLag].
 	 */
 	private List<List<List<Integer>>> parentNodesPast;
+	
+	private List<List<List<Integer>>> parentStaticPast;
 
 	/**
 	 * parentNodes.get(t).get(i).get(j) is the list of optimal parents in
@@ -30,17 +34,23 @@ public class Scores {
 	 * Xj[t+markovLag]->Xi[t+markovLag] is present.
 	 */
 	private List<List<List<List<Integer>>>> parentNodes;
+	
+	private List<List<List<List<Integer>>>> parentStatic;
 
 	/**
 	 * Upper limit on the number of parents from previous time slices.
 	 */
 	private int maxParents;
+	
+	private int maxStaticParents;
 
 	/**
 	 * A list of all possible sets of parent nodes. Set cardinality lies within
 	 * the range [1, maxParents].
 	 */
 	private List<List<Integer>> parentSets;
+	
+	private List<List<Integer>> staticSets;
 
 	/**
 	 * If true, evaluates only one score matrix for all transitions.
@@ -50,21 +60,25 @@ public class Scores {
 	private boolean evaluated = false;
 
 	private boolean verbose;
-
+	
+	public Scores(Observations observations, int maxParents, boolean stationaryProcess, boolean verbose) {
+		this(observations, maxParents, false, true, null, 0);
+	}
+	
 	public Scores(Observations observations, int maxParents) {
 		this(observations, maxParents, false, true);
 	}
 
-	public Scores(Observations observations, int maxParents, boolean stationaryProcess, boolean verbose) {
-		this.observations = observations;
-		this.maxParents = maxParents;
+	public Scores(Observations observations, int maxParents, boolean stationaryProcess, boolean verbose, ObservationsStatic observStatic, int maxStaticParents) {
+		this.observations = observations; this.observStatic = observStatic;
+		this.maxParents = maxParents; this.maxStaticParents = maxStaticParents;
 		this.stationaryProcess = stationaryProcess;
 		this.verbose = verbose;
 
-		int n = this.observations.numAttributes();
-		int p = this.maxParents;
+		int n = this.observations.numAttributes(); int n_static = (observStatic != null) ? this.observStatic.numAttributes() : 0;
+		int p = this.maxParents; int b = this.maxStaticParents;
 		int markovLag = observations.getMarkovLag();
-
+		
 		// calculate sum_i=1^k nCi
 		int size = n * markovLag;
 		for (int previous = n, i = 2; i <= p; i++) {
@@ -73,34 +87,62 @@ public class Scores {
 			previous = current;
 		}
 		// TODO: check for size overflow
-
+		
 		// generate parents sets
 		parentSets = new ArrayList<List<Integer>>(size);
 		for (int i = 1; i <= p; i++) {
-			generateCombinations(n * markovLag, i);
+			generateCombinations(n * markovLag, i, parentSets);
 		}
-
+		
+		// Same thing but for static attributes
+		
+		int sizeStatic = n_static;
+		for (int previous = n_static, i = 2; i <= b; i++) {
+			int current = previous * (n_static - i + 1) / i;
+			sizeStatic += current;
+			previous = current;
+		}
+		// TODO: check for size overflow
+		
+		// generate parents sets
+		staticSets = new ArrayList<List<Integer>>(sizeStatic);
+		for (int i = 1; i <= b; i++) {
+			generateCombinations(n_static, i, staticSets);
+		}
+		
 		int numTransitions = stationaryProcess ? 1 : observations.numTransitions();
 		parentNodesPast = new ArrayList<List<List<Integer>>>(numTransitions);
 		parentNodes = new ArrayList<List<List<List<Integer>>>>(numTransitions);
+		
+		parentStaticPast = new ArrayList<List<List<Integer>>>(numTransitions);
+		parentStatic = new ArrayList<List<List<List<Integer>>>>(numTransitions);
 
 		for (int t = 0; t < numTransitions; t++) {
 
 			parentNodesPast.add(new ArrayList<List<Integer>>(n));
+			parentStaticPast.add(new ArrayList<List<Integer>>(n));
 			// allocate parentNodesPast
 			List<List<Integer>> parentNodesPastTransition = parentNodesPast.get(t);
+			List<List<Integer>> parentStaticNodesPastTransition = parentStaticPast.get(t);
 			for (int i = 0; i < n; i++) {
 				parentNodesPastTransition.add(new ArrayList<Integer>());
+				parentStaticNodesPastTransition.add(new ArrayList<Integer>());
 			}
 
 			parentNodes.add(new ArrayList<List<List<Integer>>>(n));
+			parentStatic.add(new ArrayList<List<List<Integer>>>(n));
 			// allocate parentNodes
 			List<List<List<Integer>>> parentNodesTransition = parentNodes.get(t);
+			List<List<List<Integer>>> parentStaticNodesTransition = parentStatic.get(t);
 			for (int i = 0; i < n; i++) {
 				parentNodesTransition.add(new ArrayList<List<Integer>>(n));
+				parentStaticNodesTransition.add(new ArrayList<List<Integer>>(n));
+				
 				List<List<Integer>> parentNodesTransitionHead = parentNodesTransition.get(i);
+				List<List<Integer>> parentStaticNodesTransitionHead = parentStaticNodesTransition.get(i);
 				for (int j = 0; j < n; j++) {
 					parentNodesTransitionHead.add(new ArrayList<Integer>());
+					parentStaticNodesTransitionHead.add(new ArrayList<Integer>());
 				}
 			}
 		}
@@ -111,7 +153,11 @@ public class Scores {
 	}
 
 	public Scores evaluate(ScoringFunction sf) {
-
+		
+		if(observStatic!=null) {
+			return evaluateWithStatic(sf);
+		}
+		
 		int n = observations.numAttributes();
 		int numTransitions = scoresMatrix.length;
 
@@ -125,8 +171,8 @@ public class Scores {
 				// System.out.println("evaluating node " + i + "/" + n);
 				double bestScore = Double.NEGATIVE_INFINITY;
 				for (List<Integer> parentSet : parentSets) {
-					double score = stationaryProcess ? sf.evaluate(observations, parentSet, i) : sf.evaluate(
-							observations, t, parentSet, i);
+					double score = stationaryProcess ? sf.evaluate(observations, parentSet, i, null, null) : sf.evaluate(
+							observations, t, parentSet, i, null, null);
 					// System.out.println("Xi:" + i + " ps:" + parentSet +
 					// " score:" + score);
 					if (bestScore < score) {
@@ -146,8 +192,8 @@ public class Scores {
 					if (i != j) {
 						double bestScore = Double.NEGATIVE_INFINITY;
 						for (List<Integer> parentSet : parentSets) {
-							double score = stationaryProcess ? sf.evaluate(observations, parentSet, j, i) : sf
-									.evaluate(observations, t, parentSet, j, i);
+							double score = stationaryProcess ? sf.evaluate(observations, parentSet, j, i, null, null) : sf
+									.evaluate(observations, t, parentSet, j, i, null, null);
 							// System.out.println("Xi:" + i + " Xj:" + j +
 							// " ps:" + parentSet + " score:" + score);
 							if (bestScore < score) {
@@ -186,7 +232,7 @@ public class Scores {
 	}
 
 	// adapted from http://stackoverflow.com/a/7631893
-	private void generateCombinations(int n, int k) {
+	private void generateCombinations(int n, int k, List<List<Integer>> desiredList) {
 
 		int[] comb = new int[k];
 		for (int i = 0; i < comb.length; i++) {
@@ -200,7 +246,7 @@ public class Scores {
 			for (int i : comb) {
 				intList.add(i);
 			}
-			this.parentSets.add(intList);
+			desiredList.add(intList);
 
 			int target = k - 1;
 			comb[target]++;
@@ -280,13 +326,30 @@ public class Scores {
 					interRelations.add(new Edge(nodePast, head));
 					hasParent[head] = true;
 				}
+				
+				if(parentStatic != null) {
+					List<List<List<Integer>>> staticparentNodesT = parentStatic.get(t);
+					for(Integer staticNodePast : staticparentNodesT.get(head).get(tail)) {
+						System.out.println("Static: " + staticNodePast + "--->" + head);
+					}
+				}
+				
 			}
 
 			for (int i = 0; i < n; i++)
 				if (!hasParent[i]) {
 					List<List<Integer>> parentNodesPastT = parentNodesPast.get(t);
-					for (int nodePast : parentNodesPastT.get(i))
+					for (int nodePast : parentNodesPastT.get(i)) {
 						interRelations.add(new Edge(nodePast, i));
+					}
+					
+					if(parentStaticPast != null) {
+						List<List<Integer>> staticparentNodesPastT = parentStaticPast.get(t);
+						for(Integer staticNodePast : staticparentNodesPastT.get(i)) {
+							System.out.println("StaticAAA: " + staticNodePast + "--->" + i);
+						}
+					}
+				
 				}
 
 			BayesNet bt = new BayesNet(observations.getAttributes(), observations.getMarkovLag(), intraRelations,
@@ -349,6 +412,122 @@ public class Scores {
 		}
 
 		return sb.toString();
+	}
+	
+	public Scores evaluateWithStatic(ScoringFunction sf) {
+		
+		System.out.println("EVAL WITH STATIC");
+		
+		int n = observations.numAttributes();
+		int numTransitions = scoresMatrix.length;
+
+		int[] numBestScoresPast = new int[n];
+		int[][] numBestScores = new int[n][n];
+
+		for (int t = 0; t < numTransitions; t++) {
+			//System.out.println("\n\n\nevaluating score in transition " + t + "/" + numTransitions);
+			for (int i = 0; i < n; i++) {
+				//System.out.println("\n\nevaluating node " + i + "/" + n);
+				double bestScore = Double.NEGATIVE_INFINITY;
+				for (List<Integer> parentSet : parentSets) {
+					
+					for(List<Integer> staticParentSet : staticSets) {
+						
+						//System.out.println("\nPais testando: Static:" + staticParentSet + " || Dynamic:" + parentSet);
+						
+						double score = stationaryProcess ? sf.evaluate(observations, parentSet, i, observStatic, staticParentSet) : sf.evaluate(
+								observations, t, parentSet, i, observStatic, staticParentSet);
+						//System.out.println("Score:" + score);
+						if (bestScore < score) {
+							bestScore = score;
+							parentNodesPast.get(t).set(i, parentSet);
+							parentStaticPast.get(t).set(i, staticParentSet);
+							numBestScoresPast[i] = 1;
+						} else if (bestScore == score)
+							numBestScoresPast[i]++;
+						
+					}
+					
+				}
+				for (int j = 0; j < n; j++) {
+					scoresMatrix[t][i][j] = -bestScore;
+				}
+			}
+			
+//			System.out.println("parentNodesPast:");
+//			for(List<List<Integer>> matriz : parentNodesPast) {
+//				for(List<Integer> linha : matriz) {
+//					for(Integer value : linha) {
+//						System.out.print(value + "  ");
+//					}
+//					System.out.println("");
+//				}
+//				System.out.println("");
+//				
+//			}
+//				
+//			System.out.println("Scores Mtrx:");
+//			for(double[][] matriz : scoresMatrix) {
+//				for(double[] linha : matriz) {
+//					for(double value : linha) {
+//						System.out.print(value + "  ");
+//					}
+//					System.out.println("");
+//				}
+//				System.out.println("");
+//				
+//			}
+//			
+//			System.exit(1);
+			
+			for (int i = 0; i < n; i++) {
+				for (int j = 0; j < n; j++) {
+					if (i != j) {
+						double bestScore = Double.NEGATIVE_INFINITY;
+						for (List<Integer> parentSet : parentSets) {
+							
+							for(List<Integer> staticParentSet : staticSets) {
+								
+								double score = stationaryProcess ? sf.evaluate(observations, parentSet, j, i, observStatic, staticParentSet) : sf
+										.evaluate(observations, t, parentSet, j, i, observStatic, staticParentSet);
+								// System.out.println("Xi:" + i + " Xj:" + j +
+								// " ps:" + parentSet + " score:" + score);
+								if (bestScore < score) {
+									bestScore = score;
+									parentNodes.get(t).get(i).set(j, parentSet);
+									parentStatic.get(t).get(i).set(j, staticParentSet);
+									numBestScores[i][j] = 1;
+								} else if (bestScore == score)
+									numBestScores[i][j]++;
+							}
+							
+						}
+
+						scoresMatrix[t][i][j] += bestScore;
+
+					}
+				}
+			}
+
+			if (verbose) {
+				// System.out.println(Arrays.toString(numBestScoresPast));
+				// System.out.println(Arrays.deepToString(numBestScores));
+				long numSolutions = 1;
+				for (int i = 0; i < n; i++)
+					numSolutions *= numBestScoresPast[i];
+				for (int i = 0; i < n; i++)
+					for (int j = 0; j < n; j++)
+						if (i != j)
+							numSolutions *= numBestScores[i][j];
+				System.out.println("Number of networks with max score: " + numSolutions);
+			}
+
+		}
+
+		evaluated = true;
+
+		return this;
+
 	}
 
 }
