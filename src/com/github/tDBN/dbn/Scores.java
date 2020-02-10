@@ -283,7 +283,7 @@ public class Scores {
 		if (!evaluated)
 			throw new IllegalStateException("Scores must be evaluated before being converted to DBN");
 
-		int n = observations.numAttributes();
+		int n = observations.numAttributes(); int n_static = observStatic.numAttributes();
 
 		int numTransitions = scoresMatrix.length;
 
@@ -315,6 +315,8 @@ public class Scores {
 			}
 
 			List<Edge> interRelations = new ArrayList<Edge>(n * maxParents);
+			
+			List<Edge> staticParents = new ArrayList<Edge>(n_static * maxStaticParents);
 
 			boolean[] hasParent = new boolean[n];
 
@@ -330,7 +332,7 @@ public class Scores {
 				if(parentStatic != null) {
 					List<List<List<Integer>>> staticparentNodesT = parentStatic.get(t);
 					for(Integer staticNodePast : staticparentNodesT.get(head).get(tail)) {
-						System.out.println("Static: " + staticNodePast + "--->" + head);
+						staticParents.add(new Edge(staticNodePast, head));
 					}
 				}
 				
@@ -346,19 +348,19 @@ public class Scores {
 					if(parentStaticPast != null) {
 						List<List<Integer>> staticparentNodesPastT = parentStaticPast.get(t);
 						for(Integer staticNodePast : staticparentNodesPastT.get(i)) {
-							System.out.println("StaticAAA: " + staticNodePast + "--->" + i);
+							staticParents.add(new Edge(staticNodePast, i));
 						}
 					}
 				
 				}
 
 			BayesNet bt = new BayesNet(observations.getAttributes(), observations.getMarkovLag(), intraRelations,
-					interRelations);
+					interRelations, observStatic.getAttributes(), staticParents);
 
 			transitionNets.add(bt);
 		}
 
-		return new DynamicBayesNet(observations.getAttributes(), transitionNets);
+		return new DynamicBayesNet(observations.getAttributes(), transitionNets, observStatic.getAttributes());
 
 	}
 
@@ -416,7 +418,7 @@ public class Scores {
 	
 	public Scores evaluateWithStatic(ScoringFunction sf) {
 		
-		System.out.println("EVAL WITH STATIC");
+//		System.out.println("EVAL WITH STATIC");
 		
 		int n = observations.numAttributes();
 		int numTransitions = scoresMatrix.length;

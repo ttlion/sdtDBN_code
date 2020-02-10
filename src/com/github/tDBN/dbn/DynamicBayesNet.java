@@ -13,6 +13,7 @@ import com.github.tDBN.utils.Edge;
 public class DynamicBayesNet {
 
 	private List<Attribute> attributes;
+	private List<Attribute> staticAttributes;
 
 	private int markovLag;
 
@@ -20,15 +21,19 @@ public class DynamicBayesNet {
 
 	private List<BayesNet> transitionNets;
 
-	public DynamicBayesNet(List<Attribute> attributes, BayesNet initialNet, List<BayesNet> transitionNets) {
-		this.attributes = attributes;
+	public DynamicBayesNet(List<Attribute> attributes, BayesNet initialNet, List<BayesNet> transitionNets, List<Attribute> staticAttributes) {
+		this.attributes = attributes; this.staticAttributes = staticAttributes;
 		this.initialNet = initialNet;
 		this.transitionNets = transitionNets;
 		this.markovLag = transitionNets.get(0).getMarkovLag();
 	}
 
 	public DynamicBayesNet(List<Attribute> attributes, List<BayesNet> transitionNets) {
-		this(attributes, null, transitionNets);
+		this(attributes, null, transitionNets, null);
+	}
+
+	public DynamicBayesNet(List<Attribute> attributes, List<BayesNet> transitionNets,List<Attribute> staticAttributes) {
+		this(attributes, null, transitionNets, staticAttributes);
 	}
 
 	public DynamicBayesNet generateParameters() {
@@ -144,7 +149,7 @@ public class DynamicBayesNet {
 		StringBuilder sb = new StringBuilder();
 		String ls = System.getProperty("line.separator");
 		String dl = ls + ls;
-		int n = attributes.size();
+		int n = attributes.size(); int n_static = staticAttributes.size();
 		int T = transitionNets.size();
 
 		if (compactFormat && (T != 1 || markovLag != 1))
@@ -153,6 +158,8 @@ public class DynamicBayesNet {
 
 		// digraph init
 		sb.append("digraph dbn{" + dl);
+
+		sb.append("rankdir=LR;"+ls); // Para se ter imagem na horizontal
 
 		if (compactFormat) {
 			for (int i = 0; i < n; i++) {
@@ -168,6 +175,7 @@ public class DynamicBayesNet {
 		} else {
 			for (int t = 0; t < T + markovLag; t++) {
 				// slice t attributes
+				sb.append("{" + ls + "rank=same;"+ls);
 				for (int i = 0; i < n; i++) {
 					sb.append("X" + i + "_" + t);
 					String attributeName = attributes.get(i).getName();
@@ -177,8 +185,17 @@ public class DynamicBayesNet {
 						sb.append("[label=\"X" + i);
 					sb.append("[" + t + "]\"];" + ls);
 				}
-				sb.append(ls);
+				sb.append("};"+ ls);
 			}
+			
+			// static attributes
+			sb.append("{" + ls + "rank=source;"+ls);
+			for (int i = 0; i < n_static; i++) {
+				sb.append(staticAttributes.get(i).getName());
+				sb.append("[shape=polygon, sides=5];" + ls);
+			}
+			sb.append("};"+ ls);
+			
 		}
 		sb.append(ls);
 
@@ -292,7 +309,7 @@ public class DynamicBayesNet {
 		BayesNet bt = new BayesNet(a, intra, inter);
 		bt.generateParameters();
 
-		DynamicBayesNet dbn1 = new DynamicBayesNet(a, b0, Arrays.asList(bt));
+		DynamicBayesNet dbn1 = new DynamicBayesNet(a, b0, Arrays.asList(bt), null);
 
 		Observations o = dbn1.generateObservations(100);
 		System.out.println(o);

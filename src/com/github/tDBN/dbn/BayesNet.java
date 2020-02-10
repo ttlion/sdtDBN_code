@@ -18,12 +18,16 @@ import com.github.tDBN.utils.Utils;
 public class BayesNet {
 
 	private List<Attribute> attributes;
+	
+	private List<Attribute> staticAttributes;
 
 	// "processed" (unshifted) relations
 	private List<List<List<Integer>>> parentNodesPerSlice;
 
 	// "raw" (shifted) relations
 	private List<List<Integer>> parentNodes;
+	
+	private List<List<Integer>> staticParentNodes;
 
 	private List<Map<Configuration, List<Double>>> parameters;
 
@@ -36,25 +40,30 @@ public class BayesNet {
 
 	// prior network
 	public BayesNet(List<Attribute> attributes, List<Edge> intraRelations, Random r) {
-		this(attributes, 0, intraRelations, (List<Edge>) null, r);
+		this(attributes, 0, intraRelations, (List<Edge>) null, r, null, null);
 	}
 
 	public BayesNet(List<Attribute> attributes, List<Edge> intraRelations) {
-		this(attributes, 0, intraRelations, (List<Edge>) null, null);
+		this(attributes, 0, intraRelations, (List<Edge>) null, null, null, null);
 	}
 
 	// transition network, standard Markov lag = 1
 	public BayesNet(List<Attribute> attributes, List<Edge> intraRelations, List<Edge> interRelations, Random r) {
-		this(attributes, 1, intraRelations, interRelations, r);
+		this(attributes, 1, intraRelations, interRelations, r, null, null);
 	}
 
 	public BayesNet(List<Attribute> attributes, List<Edge> intraRelations, List<Edge> interRelations) {
-		this(attributes, 1, intraRelations, interRelations, null);
+		this(attributes, 1, intraRelations, interRelations, null, null, null);
 	}
 
 	// transition network, arbitrary Markov lag
 	public BayesNet(List<Attribute> attributes, int markovLag, List<Edge> intraRelations, List<Edge> interRelations) {
-		this(attributes, markovLag, intraRelations, interRelations, null);
+		this(attributes, markovLag, intraRelations, interRelations, null, null, null);
+	}
+	
+	// transition network, arbitrary Markov lag
+	public BayesNet(List<Attribute> attributes, int markovLag, List<Edge> intraRelations, List<Edge> interRelations, List<Attribute> staticAttributes, List<Edge> staticRelations) {
+		this(attributes, markovLag, intraRelations, interRelations, null, staticAttributes, staticRelations);
 	}
 
 	// edge heads are already unshifted (i.e., in the interval [0, n[)
@@ -62,9 +71,9 @@ public class BayesNet {
 	// markovLag*n[)
 	// intraRelations edge tails are unshifted
 	public BayesNet(List<Attribute> attributes, int markovLag, List<Edge> intraRelations, List<Edge> interRelations,
-			Random r) {
+			Random r, List<Attribute> staticAttributes, List<Edge> staticRelations) {
 
-		this.attributes = attributes;
+		this.attributes = attributes; this.staticAttributes = staticAttributes;
 		this.markovLag = markovLag;
 		int n = attributes.size();
 
@@ -120,6 +129,18 @@ public class BayesNet {
 
 		// obtain nodes by topological order
 		topologicalOrder = Utils.topologicalSort(childNodes);
+		
+		
+		if(staticRelations!=null) { // There are static nodes in the framework, store them correctly
+			staticParentNodes = new ArrayList<List<Integer>>(n);
+			for (int i = 0; i < n; i++)
+				staticParentNodes.add(new ArrayList<Integer>());
+			
+			for (Edge edge : staticRelations) {
+				staticParentNodes.get(edge.getHead()).add(edge.getTail());
+			}
+		}
+		
 	}
 
 	public void generateParameters() {
@@ -402,6 +423,12 @@ public class BayesNet {
 						sb.append("X" + tail + "_" + slice + " -> " + "X" + head + "_" + presentSlice + ls);
 				sb.append(ls);
 			}
+			
+			for (int head = 0; head < n; head++)
+				for (Integer staticTail : staticParentNodes.get(head))
+					sb.append(staticAttributes.get(staticTail).getName() + " -> " + "X" + head + "_" + presentSlice + ls);
+			sb.append(ls);
+			
 		}
 
 		return sb.toString();
