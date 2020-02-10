@@ -149,22 +149,22 @@ public class ObservationsStatic {
 				
 			}
 			
-			i=0;
-			System.out.println("Matriz estatica:");
-			for(int[][] matriz : usefulObservations) {
-				for(int[] linha : matriz) {
-					for(int value : linha) {
-						if(value != -1)
-							System.out.print(attributes.get(i).get(value) + "  ");
-						else
-							System.out.print(-1);
-						i++;
-					}
-					i=0;
-					System.out.println("");
-				}
-				System.out.println("");
-			}
+//			i=0;
+//			System.out.println("Matriz estatica:");
+//			for(int[][] matriz : usefulObservations) {
+//				for(int[] linha : matriz) {
+//					for(int value : linha) {
+//						if(value != -1)
+//							System.out.print(attributes.get(i).get(value) + "  ");
+//						else
+//							System.out.print(-1);
+//						i++;
+//					}
+//					i=0;
+//					System.out.println("");
+//				}
+//				System.out.println("");
+//			}
 
 		} catch (IOException e) {
 			System.err.println("File " + usefulObservationsFileName + " could not be opened.");
