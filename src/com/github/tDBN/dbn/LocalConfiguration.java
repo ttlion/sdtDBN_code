@@ -6,13 +6,13 @@ import java.util.List;
 
 public class LocalConfiguration extends Configuration {
 
-	private int[] parentIndices;
+	protected int[] parentIndices;
 
 	/**
 	 * If true, considers the child value when matching an observation with the
 	 * current configuration. In this case, N_{ijk} is what is being counted.
 	 */
-	private boolean considerChild = true;
+	protected boolean considerChild = true;
 
 	/**
 	 * Allocates the configuration array and sets all parents and the child to
@@ -54,6 +54,10 @@ public class LocalConfiguration extends Configuration {
 
 		this.childNode = childNode;
 		resetChild();
+		
+//		System.out.print("Config Dinamica: ");
+//		for(int valor : configuration) System.out.print(valor + ", ");
+//		System.out.println("");
 	}
 
 	public LocalConfiguration(List<Attribute> attributes, int markovLag, List<Integer> parentNodesPast,
@@ -91,6 +95,18 @@ public class LocalConfiguration extends Configuration {
 		}
 		return true;
 	}
+	
+	
+	public boolean matches(int[] observationDyn, int[] observationStatic) {
+		if(observationStatic == null)
+			return matches(observationDyn);
+		
+		System.out.println("Error! Trying to match with static observations using configuration that only supports dynamic configurations!!");
+		System.exit(1);
+		
+		return false;
+	}
+	
 
 	/**
 	 * Updates the configuration of parents' values by incrementing the current
