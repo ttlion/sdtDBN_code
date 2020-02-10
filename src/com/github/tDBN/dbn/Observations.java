@@ -387,6 +387,21 @@ public class Observations {
 
 				}
 			}
+			
+//			i=0;
+//			System.out.println("Matriz dyn:");
+//			for(int[][] matriz : usefulObservations) {
+//				for(int[] linha : matriz) {
+//					for(int value : linha) {
+//						System.out.print(attributes.get(i%numAttributes).get(value) + "  ");
+//						i++;
+//					}
+//					i=0;
+//					System.out.println("");
+//				}
+//				System.out.println("");
+//				
+//			}
 
 		} catch (IOException e) {
 			System.err.println("File " + usefulObservationsFileName + " could not be opened.");
@@ -766,5 +781,43 @@ public class Observations {
 	public static void main(String args[]) {
 		System.out.println(new Observations(args[0]));
 	}
+	
+	public Map<String, boolean[]> getSubjectIsPresent(){
+		return subjectIsPresent;
+	}
+	
+	
+	/**
+	 * Given a network configuration (parents and child values), counts all
+	 * observations in some transition that are compatible with it. If
+	 * transition is negative, counts matches in all transitions.
+	 * TAMBEM CONTA PROS ESTATICOS
+	 */
+	public int count(LocalConfiguration c, int transition, ObservationsStatic observStatic) {
+		
+		if(observStatic == null) {
+			return count(c, transition);
+		}
+		
+		//TODO Ver se e so mesmo isto
+		
+		// stationary process
+		if (transition < 0) {
+			int allMatches = 0;
+			int T = numTransitions();
+			for (int t = 0; t < T; t++)
+				allMatches += count(c, t, observStatic);
+			return allMatches;
+		}
 
+		// time-varying process
+		int matches = 0;
+		int N = numObservations(transition);
+		for (int i = 0; i < N; i++)
+			if (c.matches(usefulObservations[transition][i], observStatic.getObservationsMatrix()[transition][i]))
+				matches++;
+		return matches;
+		
+	}
+	
 }
