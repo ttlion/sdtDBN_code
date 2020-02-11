@@ -79,6 +79,16 @@ public class Scores {
 		int p = this.maxParents; int b = this.maxStaticParents;
 		int markovLag = observations.getMarkovLag();
 		
+		if(observStatic != null) {
+			if(maxStaticParents<0) {
+				System.out.println("Maximum number of static parents must be >=0 !");
+				System.exit(1);
+			} else if (maxStaticParents > n_static) {
+				System.out.println("Maximum number of static parents must be <= number static attributes!");
+				System.exit(1);
+			}	
+		}
+		
 		// calculate sum_i=1^k nCi
 		int size = n * markovLag;
 		for (int previous = n, i = 2; i <= p; i++) {

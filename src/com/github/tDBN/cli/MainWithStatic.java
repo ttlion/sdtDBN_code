@@ -80,6 +80,10 @@ public class MainWithStatic {
 
 		Option parameters = OptionBuilder.withDescription("Learns and outputs the network parameters.")
 				.withLongOpt("parameters").create("pm");
+		
+		Option numStaticParents = OptionBuilder.withArgName("int").hasArg()
+				.withDescription("Maximum number of static parents of a certain node (default = 2)").withLongOpt("numStaticParents")
+				.create("b");
 
 		options.addOption(inputFile);
 		options.addOption(numParents);
@@ -93,6 +97,7 @@ public class MainWithStatic {
 		options.addOption(nonStationary);
 		options.addOption(parameters);
 		options.addOption(inputStatic);
+		options.addOption(numStaticParents);
 
 		CommandLineParser parser = new GnuParser();
 		try {
@@ -116,7 +121,7 @@ public class MainWithStatic {
 			if(hasStatic == true)
 				staticObservations = new ObservationsStatic(cmd.getOptionValue("is"), o.getSubjLinePerMtrx(), o.numTransitions(), o.getNumbSubjects());			
 			
-			Scores s = new Scores(o, Integer.parseInt(cmd.getOptionValue("p")), stationary, verbose, staticObservations, 2);
+			Scores s = new Scores(o, Integer.parseInt(cmd.getOptionValue("p")), stationary, verbose, staticObservations, Integer.parseInt(cmd.getOptionValue("b", "2")));
 			if (cmd.hasOption("s") && cmd.getOptionValue("s").equalsIgnoreCase("ll")) {
 				if (verbose)
 					System.out.println("Evaluating network with LL score.");
