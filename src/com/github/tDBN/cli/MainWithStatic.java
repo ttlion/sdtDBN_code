@@ -31,7 +31,7 @@ public class MainWithStatic {
 				.withDescription("Input CSV file with dynamic features to be used for network learning.").withLongOpt("inputFile")
 				.create("i");
 		
-		Option inputStatic = OptionBuilder.withArgName("file").hasArg().isRequired()
+		Option inputStatic = OptionBuilder.withArgName("file").hasArg()
 				.withDescription("Input CSV file with static features to be used for network learning.").withLongOpt("inputStaticFile")
 				.create("is");
 

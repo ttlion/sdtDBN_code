@@ -293,7 +293,9 @@ public class Scores {
 		if (!evaluated)
 			throw new IllegalStateException("Scores must be evaluated before being converted to DBN");
 
-		int n = observations.numAttributes(); int n_static = observStatic.numAttributes();
+		int n = observations.numAttributes(); 
+		int n_static = (observStatic!=null) ? observStatic.numAttributes() : 0;
+		List<Attribute> staticAttributes = (observStatic != null) ? observStatic.getAttributes() : null;
 
 		int numTransitions = scoresMatrix.length;
 
@@ -369,12 +371,12 @@ public class Scores {
 				}
 
 			BayesNet bt = new BayesNet(observations.getAttributes(), observations.getMarkovLag(), intraRelations,
-					interRelations, observStatic.getAttributes(), staticParents);
+					interRelations, staticAttributes, staticParents);
 
 			transitionNets.add(bt);
 		}
 
-		return new DynamicBayesNet(observations.getAttributes(), transitionNets, observStatic.getAttributes());
+		return new DynamicBayesNet(observations.getAttributes(), transitionNets, staticAttributes);
 
 	}
 
