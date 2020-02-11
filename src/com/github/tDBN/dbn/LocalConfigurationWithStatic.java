@@ -1,5 +1,6 @@
 package com.github.tDBN.dbn;
 
+import java.util.Arrays;
 import java.util.List;
 
 public class LocalConfigurationWithStatic extends LocalConfiguration {
@@ -12,6 +13,17 @@ public class LocalConfigurationWithStatic extends LocalConfiguration {
 	
 	private int[] staticParentIndices;
 	
+	public LocalConfigurationWithStatic(LocalConfigurationWithStatic original) {
+		super(original);
+		this.staticAttributes = original.staticAttributes;
+		this.staticConfiguration = original.staticConfiguration.clone();
+		this.staticParentIndices = original.staticParentIndices.clone();		
+	}
+	
+	public LocalConfigurationWithStatic(List<Attribute> attributes, int markovLag, List<Integer> parentNodesPast,
+			int childNode, List<Attribute> staticAttributes, List<Integer> staticParentSet) {
+		this(attributes, markovLag, parentNodesPast, null, childNode, staticAttributes, staticParentSet);
+	}
 	
 	public LocalConfigurationWithStatic(List<Attribute> attributes, int markovLag, List<Integer> parentNodesPast,
 			Integer parentNodesPresent, int childNode, List<Attribute> staticAttributes, List<Integer> staticParentSet) {
@@ -173,30 +185,68 @@ public class LocalConfigurationWithStatic extends LocalConfiguration {
 	
 	@Override
 	public String toString() {
-		StringBuilder sb = new StringBuilder();
+		StringBuilder sb = new StringBuilder();	
 		
-		sb.append("ATT: Static:");
-		for(Attribute att : staticAttributes) {
-			sb.append(att.getName() + ", ");
-		}
-		sb.append("  || Dynam:");
-		for(Attribute att : attributes) {
-			sb.append(att.getName() + ", ");
-		}
-		sb.append("\n");
+		sb.append("[");
 		
-		sb.append("Config: ");
-		for(int value : staticConfiguration) {
-			sb.append(value + ", ");
-		}
-		sb.append(" || ");
-		for(int value : configuration) {
-			sb.append(value + ", ");
+		// Print static config distribution
+		for (int i = 0; i < staticConfiguration.length; i++) {
+			if (staticConfiguration[i] != -1) {
+				sb.append(staticAttributes.get(i).getName() + "=" + staticAttributes.get(i).get(staticConfiguration[i]));
+				sb.append(", ");
+			}
 		}
 		
+		int n = attributes.size();
+		
+		for (int i = 0; i < configuration.length; i++) {
+			if (configuration[i] != -1 && i != n * markovLag + childNode) {
+				int lag = i / n;
+				int id = i % n;
+				sb.append(attributes.get(id).getName() + "[" + lag + "]=" + attributes.get(id).get(configuration[i]));
+				sb.append(", ");
+			}
+		}
+		
+		// Readable version
+		if (sb.length() > 0) {
+			sb.setLength(sb.length() - 2);
+		}
+		
+		sb.append("]");
 		return sb.toString();
 		
 	}
-	
+
+	@Override
+	public int hashCode() {
+		final int prime = 31;
+		int result = super.hashCode();
+		result = prime * result + ((staticAttributes == null) ? 0 : staticAttributes.hashCode());
+		result = prime * result + Arrays.hashCode(staticConfiguration);
+		result = prime * result + Arrays.hashCode(staticParentIndices);
+		return result;
+	}
+
+	@Override
+	public boolean equals(Object obj) {
+		if (this == obj)
+			return true;
+		if (!super.equals(obj))
+			return false;
+		if (getClass() != obj.getClass())
+			return false;
+		LocalConfigurationWithStatic other = (LocalConfigurationWithStatic) obj;
+		if (staticAttributes == null) {
+			if (other.staticAttributes != null)
+				return false;
+		} else if (!staticAttributes.equals(other.staticAttributes))
+			return false;
+		if (!Arrays.equals(staticConfiguration, other.staticConfiguration))
+			return false;
+		if (!Arrays.equals(staticParentIndices, other.staticParentIndices))
+			return false;
+		return true;
+	}
 	
 }

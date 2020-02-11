@@ -47,7 +47,15 @@ public class DynamicBayesNet {
 		learnParameters(o, false);
 	}
 
+	public void learnParameters(Observations o, ObservationsStatic observStatic) {
+		learnParameters(o, false, observStatic);
+	}
+	
 	public String learnParameters(Observations o, boolean stationaryProcess) {
+		return learnParameters(o, stationaryProcess, null);
+	}
+
+	public String learnParameters(Observations o, boolean stationaryProcess, ObservationsStatic observStatic) {
 
 		if (stationaryProcess) {
 			// assert there is only one transition network
@@ -55,12 +63,12 @@ public class DynamicBayesNet {
 				throw new IllegalArgumentException("DBN has more than one transition network, cannot "
 						+ "learn parameters considering a stationary process");
 
-			return transitionNets.get(0).learnParameters(o, -1);
+			return transitionNets.get(0).learnParameters(o, -1, observStatic);
 
 		} else {
 			int T = transitionNets.size();
 			for (int t = 0; t < T; t++) {
-				transitionNets.get(t).learnParameters(o, t);
+				transitionNets.get(t).learnParameters(o, t, observStatic);
 			}
 		}
 		return null;

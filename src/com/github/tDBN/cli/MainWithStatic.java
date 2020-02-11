@@ -149,7 +149,7 @@ public class MainWithStatic {
 			dbn = s.toDBN(root, spanning);
 
 			if (printParameters)
-				dbn.learnParameters(o);
+				dbn.learnParameters(o, stationary, staticObservations);
 
 			String output;
 			if (cmd.hasOption("d")) {

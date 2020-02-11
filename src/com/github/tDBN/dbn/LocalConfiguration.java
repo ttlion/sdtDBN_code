@@ -28,6 +28,13 @@ public class LocalConfiguration extends Configuration {
 	 * @param childNode
 	 *            child node in t+1
 	 */
+	
+	public LocalConfiguration(LocalConfiguration original) {
+		super(original);
+		this.parentIndices = original.parentIndices.clone();
+		this.considerChild = original.considerChild;
+	}
+	
 	public LocalConfiguration(List<Attribute> attributes, int markovLag, List<Integer> parentNodesPast,
 			List<Integer> parentNodesPresent, int childNode) {
 		super(attributes, markovLag);
@@ -96,15 +103,9 @@ public class LocalConfiguration extends Configuration {
 		return true;
 	}
 	
-	
+	// Se forem dadas tb observacoes estaticas, ignorar porque se quer apenas o match com as dinamicas
 	public boolean matches(int[] observationDyn, int[] observationStatic) {
-		if(observationStatic == null)
-			return matches(observationDyn);
-		
-		System.out.println("Error! Trying to match with static observations using configuration that only supports dynamic configurations!!");
-		System.exit(1);
-		
-		return false;
+		return matches(observationDyn);
 	}
 	
 
@@ -221,4 +222,30 @@ public class LocalConfiguration extends Configuration {
 		System.out.println(count);
 		System.out.println(c.getNumParameters());
 	}
+
+	@Override
+	public int hashCode() {
+		final int prime = 31;
+		int result = super.hashCode();
+		result = prime * result + (considerChild ? 1231 : 1237);
+		result = prime * result + Arrays.hashCode(parentIndices);
+		return result;
+	}
+
+	@Override
+	public boolean equals(Object obj) {
+		if (this == obj)
+			return true;
+		if (!super.equals(obj))
+			return false;
+		if (getClass() != obj.getClass())
+			return false;
+		LocalConfiguration other = (LocalConfiguration) obj;
+		if (considerChild != other.considerChild)
+			return false;
+		if (!Arrays.equals(parentIndices, other.parentIndices))
+			return false;
+		return true;
+	}
+	
 }

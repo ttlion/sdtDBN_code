@@ -177,8 +177,12 @@ public class BayesNet {
 	public void learnParameters(Observations o) {
 		learnParameters(o, -1);
 	}
-
+	
 	public String learnParameters(Observations o, int transition) {
+		return learnParameters(o, transition, null);
+	}
+
+	public String learnParameters(Observations o, int transition, ObservationsStatic observStatic) {
 
 		if (o.getAttributes() != this.attributes) {
 			throw new IllegalArgumentException("Attributes of the observations don't"
@@ -186,12 +190,28 @@ public class BayesNet {
 		}
 
 		int n = attributes.size();
+		boolean hasStaticParents = false;
+		
 		parameters = new ArrayList<Map<Configuration, List<Double>>>(n);
+		
+		LocalConfiguration c;
 
 		// for each node, generate its local CPT
 		for (int i = 0; i < n; i++) {
 
-			LocalConfiguration c = new LocalConfiguration(attributes, markovLag, parentNodes.get(i), i);
+			hasStaticParents = false;
+
+			if(observStatic == null) {
+				c = new LocalConfiguration(attributes, markovLag, parentNodes.get(i), i);
+			} else {
+				if(staticParentNodes.get(i).isEmpty() == false) {
+					hasStaticParents = true;
+					c = new LocalConfigurationWithStatic(attributes, markovLag, parentNodes.get(i), i, staticAttributes, staticParentNodes.get(i));
+				} else {
+					c = new LocalConfiguration(attributes, markovLag, parentNodes.get(i), i);
+				}
+			}
+
 			int parentsRange = c.getParentsRange();
 
 			// node i has no parents
@@ -209,14 +229,22 @@ public class BayesNet {
 				// important, configuration is indexed by parents only
 				// child must be reset
 				c.resetChild();
-				parameters.get(i).put(new Configuration(c), probabilities);
+
+				if(hasStaticParents == true) {
+					parameters.get(i).put(new LocalConfigurationWithStatic( (LocalConfigurationWithStatic) c), probabilities);
+				} else {
+					parameters.get(i).put(new LocalConfiguration(c), probabilities);
+				}
 
 			} else {
 				parameters.add(new HashMap<Configuration, List<Double>>((int) Math.ceil(parentsRange / 0.75)));
 
 				do {
+					//System.out.println(c);
+					
 					c.setConsiderChild(false);
-					int Nij = o.count(c, transition);
+					int Nij = o.count(c, transition, observStatic);
+					//System.out.println("Nij:" + Nij);
 					c.setConsiderChild(true);
 
 					int range = c.getChildRange();
@@ -230,7 +258,8 @@ public class BayesNet {
 					} else {
 						// count for all except one of possible child values
 						for (int j = range - 1; j-- > 0;) {
-							int Nijk = o.count(c, transition);
+							int Nijk = o.count(c, transition, observStatic);
+							//System.out.println("\tNijk:" + Nijk);
 							probabilities.add(1.0 * Nijk / Nij);
 							c.nextChild();
 						}
@@ -238,7 +267,15 @@ public class BayesNet {
 					// important, configuration is index by parents only
 					// child must be reset
 					c.resetChild();
-					parameters.get(i).put(new Configuration(c), probabilities);
+					
+					if(hasStaticParents == true) {
+						parameters.get(i).put(new LocalConfigurationWithStatic( (LocalConfigurationWithStatic) c), probabilities);
+					} else {
+						parameters.get(i).put(new LocalConfiguration(c), probabilities);
+					}
+					
+					//System.out.println(probabilities);
+					
 				} while (c.nextParents());
 			}
 
@@ -459,6 +496,12 @@ public class BayesNet {
 							+ "[" + presentSlice + "]" + ls);
 			sb.append(ls);
 		}
+
+		// Print static connections
+		for (int head = 0; head < n; head++)
+			for (Integer staticTail : staticParentNodes.get(head))
+				sb.append(staticAttributes.get(staticTail).getName() + " -> " + attributes.get(head).getName() + "[" + presentSlice + "]" + ls);
+		sb.append(ls);
 
 		if (printParameters) {
 			sb.append(ls);
