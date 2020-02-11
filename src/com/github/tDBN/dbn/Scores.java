@@ -331,8 +331,10 @@ public class Scores {
 				
 				if(parentStatic != null) {
 					List<List<List<Integer>>> staticparentNodesT = parentStatic.get(t);
-					for(Integer staticNodePast : staticparentNodesT.get(head).get(tail)) {
-						staticParents.add(new Edge(staticNodePast, head));
+					if(staticparentNodesT.get(head).get(tail)!=null) {
+						for(Integer staticNodePast : staticparentNodesT.get(head).get(tail)) {
+							staticParents.add(new Edge(staticNodePast, head));
+						}
 					}
 				}
 				
@@ -347,8 +349,10 @@ public class Scores {
 					
 					if(parentStaticPast != null) {
 						List<List<Integer>> staticparentNodesPastT = parentStaticPast.get(t);
-						for(Integer staticNodePast : staticparentNodesPastT.get(i)) {
-							staticParents.add(new Edge(staticNodePast, i));
+						if(staticparentNodesPastT.get(i)!=null) {
+							for(Integer staticNodePast : staticparentNodesPastT.get(i)) {
+								staticParents.add(new Edge(staticNodePast, i));
+							}
 						}
 					}
 				
@@ -433,11 +437,24 @@ public class Scores {
 				double bestScore = Double.NEGATIVE_INFINITY;
 				for (List<Integer> parentSet : parentSets) {
 					
+					// First, try without any static parents
+					double score = stationaryProcess ? sf.evaluate(observations, parentSet, i, null, null) : sf.evaluate(
+							observations, t, parentSet, i, null, null);
+					
+					if (bestScore < score) {
+						bestScore = score;
+						parentNodesPast.get(t).set(i, parentSet);
+						parentStaticPast.get(t).set(i, null);
+						numBestScoresPast[i] = 1;
+					} else if (bestScore == score)
+						numBestScoresPast[i]++;
+					
+					// Then try with all possible combinations of parents
 					for(List<Integer> staticParentSet : staticSets) {
 						
 						//System.out.println("\nPais testando: Static:" + staticParentSet + " || Dynamic:" + parentSet);
 						
-						double score = stationaryProcess ? sf.evaluate(observations, parentSet, i, observStatic, staticParentSet) : sf.evaluate(
+						score = stationaryProcess ? sf.evaluate(observations, parentSet, i, observStatic, staticParentSet) : sf.evaluate(
 								observations, t, parentSet, i, observStatic, staticParentSet);
 						//System.out.println("Score:" + score);
 						if (bestScore < score) {
@@ -488,9 +505,22 @@ public class Scores {
 						double bestScore = Double.NEGATIVE_INFINITY;
 						for (List<Integer> parentSet : parentSets) {
 							
+							// First, try without any static parents
+							double score = stationaryProcess ? sf.evaluate(observations, parentSet, j, i, null, null) : sf
+									.evaluate(observations, t, parentSet, j, i, null, null);
+							
+							if (bestScore < score) {
+								bestScore = score;
+								parentNodes.get(t).get(i).set(j, parentSet);
+								parentStatic.get(t).get(i).set(j, null);
+								numBestScores[i][j] = 1;
+							} else if (bestScore == score)
+								numBestScores[i][j]++;
+							
+							// Then try with all possible combinations of parents
 							for(List<Integer> staticParentSet : staticSets) {
 								
-								double score = stationaryProcess ? sf.evaluate(observations, parentSet, j, i, observStatic, staticParentSet) : sf
+								score = stationaryProcess ? sf.evaluate(observations, parentSet, j, i, observStatic, staticParentSet) : sf
 										.evaluate(observations, t, parentSet, j, i, observStatic, staticParentSet);
 								// System.out.println("Xi:" + i + " Xj:" + j +
 								// " ps:" + parentSet + " score:" + score);
