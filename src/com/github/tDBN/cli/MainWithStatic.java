@@ -103,6 +103,7 @@ public class MainWithStatic {
 			boolean stationary = !cmd.hasOption("nonStationary");
 			boolean spanning = cmd.hasOption("spanning");
 			boolean printParameters = cmd.hasOption("parameters");
+			boolean hasStatic = cmd.hasOption("inputStaticFile");
 
 			// TODO: check sanity
 			int markovLag = Integer.parseInt(cmd.getOptionValue("m", "1"));
@@ -110,9 +111,12 @@ public class MainWithStatic {
 
 			Observations o = new Observations(cmd.getOptionValue("i"), markovLag);
 
-			ObservationsStatic olaa = new ObservationsStatic(cmd.getOptionValue("is"), o.getSubjectIsPresent(), o.numTransitions());			
+			ObservationsStatic staticObservations = null;
 			
-			Scores s = new Scores(o, Integer.parseInt(cmd.getOptionValue("p")), stationary, verbose, olaa, 2);
+			if(hasStatic == true)
+				staticObservations = new ObservationsStatic(cmd.getOptionValue("is"), o.getSubjectIsPresent(), o.numTransitions());			
+			
+			Scores s = new Scores(o, Integer.parseInt(cmd.getOptionValue("p")), stationary, verbose, staticObservations, 2);
 			if (cmd.hasOption("s") && cmd.getOptionValue("s").equalsIgnoreCase("ll")) {
 				if (verbose)
 					System.out.println("Evaluating network with LL score.");
