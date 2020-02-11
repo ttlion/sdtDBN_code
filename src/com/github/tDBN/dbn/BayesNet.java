@@ -28,6 +28,8 @@ public class BayesNet {
 	private List<List<Integer>> parentNodes;
 	
 	private List<List<Integer>> staticParentNodes;
+	
+	boolean hasStaticArrows;
 
 	private List<Map<Configuration, List<Double>>> parameters;
 
@@ -138,6 +140,7 @@ public class BayesNet {
 			
 			for (Edge edge : staticRelations) {
 				staticParentNodes.get(edge.getHead()).add(edge.getTail());
+				hasStaticArrows = true;
 			}
 		}
 		
@@ -577,6 +580,10 @@ public class BayesNet {
 	
 	public Map<Configuration, List<Double>> getCPT(int i){
 		return parameters.get(i);
+	}
+
+	public boolean hasStaticArrows() {
+		return hasStaticArrows;
 	}
 
 }

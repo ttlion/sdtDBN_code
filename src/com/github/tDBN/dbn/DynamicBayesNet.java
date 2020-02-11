@@ -156,6 +156,12 @@ public class DynamicBayesNet {
 			throw new IllegalStateException(
 					"More than one transition network or Markov lag larger than 1, cannot create compact graph.");
 
+		boolean hasStaticArrows = false;
+		for (int t = 0; t < T; t++) {
+			if(transitionNets.get(t).hasStaticArrows() == true)
+				hasStaticArrows = true;
+		}
+		
 		// digraph init
 		sb.append("digraph dbn{" + dl);
 
@@ -189,7 +195,12 @@ public class DynamicBayesNet {
 			}
 			
 			// static attributes
-			sb.append("{" + ls + "rank=source;"+ls);
+			if(hasStaticArrows == true) {
+				sb.append("{" + ls + "rank=source;"+ls);
+			} else {
+				sb.append("{" + ls + "rank=min;"+ls);
+			}
+			
 			for (int i = 0; i < n_static; i++) {
 				sb.append(staticAttributes.get(i).getName());
 				sb.append("[shape=polygon, sides=5];" + ls);

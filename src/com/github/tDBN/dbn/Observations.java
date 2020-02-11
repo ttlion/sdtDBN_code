@@ -404,31 +404,31 @@ public class Observations {
 				}
 			}
 			
-			i=0;
-			System.out.println("Matriz dyn:");
-			for(int[][] matriz : usefulObservations) {
-				for(int[] linha : matriz) {
-					for(int value : linha) {
-						if(value != -1)
-							System.out.print(attributes.get(i%numAttributes).get(value) + "  ");
-						else
-							System.out.print(-1 + "   ");
-						i++;
-					}
-					i=0;
-					System.out.println("");
-				}
-				System.out.println("");
-				
-			}
+//			i=0;
+//			System.out.println("Matriz dyn:");
+//			for(int[][] matriz : usefulObservations) {
+//				for(int[] linha : matriz) {
+//					for(int value : linha) {
+//						if(value != -1)
+//							System.out.print(attributes.get(i%numAttributes).get(value) + "  ");
+//						else
+//							System.out.print(-1 + "   ");
+//						i++;
+//					}
+//					i=0;
+//					System.out.println("");
+//				}
+//				System.out.println("");
+//				
+//			}
 			
-			System.out.println("MAPA:");
-			for (Map.Entry<String, int[]> entry : subjectLinePerTemporalMatrix.entrySet()) {
-				int array[] = entry.getValue();
-				System.out.print("Key " + entry.getKey() + ": ");
-				for(int valor : array) System.out.print(valor + ", ");
-				System.out.println("");
-			}
+//			System.out.println("MAPA:");
+//			for (Map.Entry<String, int[]> entry : subjectLinePerTemporalMatrix.entrySet()) {
+//				int array[] = entry.getValue();
+//				System.out.print("Key " + entry.getKey() + ": ");
+//				for(int valor : array) System.out.print(valor + ", ");
+//				System.out.println("");
+//			}
 	            
 
 		} catch (IOException e) {
