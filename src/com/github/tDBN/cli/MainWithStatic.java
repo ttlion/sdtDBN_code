@@ -114,7 +114,7 @@ public class MainWithStatic {
 			ObservationsStatic staticObservations = null;
 			
 			if(hasStatic == true)
-				staticObservations = new ObservationsStatic(cmd.getOptionValue("is"), o.getSubjectIsPresent(), o.numTransitions());			
+				staticObservations = new ObservationsStatic(cmd.getOptionValue("is"), o.getSubjLinePerMtrx(), o.numTransitions(), o.getNumbSubjects());			
 			
 			Scores s = new Scores(o, Integer.parseInt(cmd.getOptionValue("p")), stationary, verbose, staticObservations, 2);
 			if (cmd.hasOption("s") && cmd.getOptionValue("s").equalsIgnoreCase("ll")) {

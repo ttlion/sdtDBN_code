@@ -51,6 +51,8 @@ public class Observations {
 	 * the value.
 	 */
 	private Map<String, boolean[]> subjectIsPresent;
+	
+	private Map<String, int[]> subjectLinePerTemporalMatrix;
 
 	/**
 	 * Each column of the useful observation data refers to an attribute.
@@ -299,8 +301,18 @@ public class Observations {
 			// allocate observations matrix
 			int totalNumSubjects = lines.size() - 1;
 			usefulObservations = new int[numTransitions][totalNumSubjects][(markovLag + 1) * numAttributes];
+			for(int i=0; i< usefulObservations.length; i++) { // Init usefulObservations to -1 in all positions
+				for(int j=0; j<usefulObservations[i].length; j++) {
+					for(int k=0; k<usefulObservations[i][j].length; k++) {
+						usefulObservations[i][j][k] = -1;
+					}
+				}
+			}
+			
+			
 			numSubjects = new int[numTransitions];
 			subjectIsPresent = new LinkedHashMap<String, boolean[]>((int) Math.ceil(totalNumSubjects / 0.75));
+			subjectLinePerTemporalMatrix = new LinkedHashMap<String, int[]>((int) Math.ceil(totalNumSubjects / 0.75)); 
 
 			String[] dataLine = li.next();
 
@@ -349,9 +361,11 @@ public class Observations {
 				// record subject id
 				String subject = dataLine[0];
 				subjectIsPresent.put(subject, new boolean[numTransitions]);
+				subjectLinePerTemporalMatrix.put(subject, new int[numTransitions]);
 
 				for (int t = 0; t < numTransitions; t++) {
 
+					subjectLinePerTemporalMatrix.get(subject)[t] = -1; // By default, mark subject as non-existing in that temporal slice
 					boolean observationsOk = true;
 
 					// obtain and check observations for each slice
@@ -377,6 +391,8 @@ public class Observations {
 							attribute.add(value);
 							usefulObservations[t][numSubjects[t]][j] = attribute.getIndex(value);
 						}
+						
+						subjectLinePerTemporalMatrix.get(subject)[t] = numSubjects[t];
 						numSubjects[t]++;
 
 					} else {
@@ -388,20 +404,32 @@ public class Observations {
 				}
 			}
 			
-//			i=0;
-//			System.out.println("Matriz dyn:");
-//			for(int[][] matriz : usefulObservations) {
-//				for(int[] linha : matriz) {
-//					for(int value : linha) {
-//						System.out.print(attributes.get(i%numAttributes).get(value) + "  ");
-//						i++;
-//					}
-//					i=0;
-//					System.out.println("");
-//				}
-//				System.out.println("");
-//				
-//			}
+			i=0;
+			System.out.println("Matriz dyn:");
+			for(int[][] matriz : usefulObservations) {
+				for(int[] linha : matriz) {
+					for(int value : linha) {
+						if(value != -1)
+							System.out.print(attributes.get(i%numAttributes).get(value) + "  ");
+						else
+							System.out.print(-1 + "   ");
+						i++;
+					}
+					i=0;
+					System.out.println("");
+				}
+				System.out.println("");
+				
+			}
+			
+			System.out.println("MAPA:");
+			for (Map.Entry<String, int[]> entry : subjectLinePerTemporalMatrix.entrySet()) {
+				int array[] = entry.getValue();
+				System.out.print("Key " + entry.getKey() + ": ");
+				for(int valor : array) System.out.print(valor + ", ");
+				System.out.println("");
+			}
+	            
 
 		} catch (IOException e) {
 			System.err.println("File " + usefulObservationsFileName + " could not be opened.");
@@ -818,6 +846,14 @@ public class Observations {
 				matches++;
 		return matches;
 		
+	}
+	
+	public Map<String, int[]> getSubjLinePerMtrx() {
+		return subjectLinePerTemporalMatrix;
+	}
+	
+	public int getNumbSubjects() {
+		return usefulObservations[0].length;
 	}
 	
 }

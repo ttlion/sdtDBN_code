@@ -47,7 +47,7 @@ public class ObservationsStatic {
 	
 	private int[] numSubjects;
 
-	public ObservationsStatic(String usefulObsFileName, Map<String, boolean[]> subjectIsPresent, int numTransInTemporal) {
+	public ObservationsStatic(String usefulObsFileName, Map<String, int[]> subjectLinePerTemporalMatrix, int numTransInTemporal, int numTempSubjects) {
 		this.usefulObservationsFileName = usefulObsFileName;
 		
 		try {
@@ -68,9 +68,23 @@ public class ObservationsStatic {
 			usefulObservationsHeader = processHeader(header, numAttributes);
 
 			// allocate observations matrix
-			int totalNumSubjects = lines.size() - 1;
+			int totalNumSubjects = numTempSubjects;
+			
+			if(totalNumSubjects==0) {
+				System.out.println("There are 0 temporal subjects! Aborting");
+				System.exit(1);
+			}
+
 			usefulObservations = new int[numTransInTemporal][totalNumSubjects][numAttributes];
 			numSubjects = new int[numTransInTemporal];
+			
+			for(int i=0; i< usefulObservations.length; i++) { // Init usefulObservations to -1 in all positions
+				for(int j=0; j<usefulObservations[i].length; j++) {
+					for(int k=0; k<usefulObservations[i][j].length; k++) {
+						usefulObservations[i][j][k] = -1;
+					}
+				}
+			}
 
 			String[] dataLine = li.next();
 
@@ -81,7 +95,7 @@ public class ObservationsStatic {
 				System.err.println("First subject contains missing values.");
 				System.exit(1);
 			}
-			int i = 0, numsubjects = 0;
+			int i = 0;
 			for (String value : firstObservation) {
 				Attribute attribute;
 				// numeric attribute
@@ -114,57 +128,57 @@ public class ObservationsStatic {
 				// record subject id
 				String subject = dataLine[0];
 				
-				boolean existsInTemporal[] = subjectIsPresent.get(subject);
+				int subjectLinesPerSlice[] = subjectLinePerTemporalMatrix.get(subject);
 				
-				if( existsInTemporal == null) {
+				if( subjectLinesPerSlice == null) {
 					System.err.println("Subject "+ subject + " is not in temporal file! Aborting!");
 					System.exit(1);
 				}
 				
 				for (int t = 0; t < numTransInTemporal; t++) {
 
-					boolean observationsOk = existsInTemporal[t];
+					int subjectLine = subjectLinesPerSlice[t];
 					
-					// if obsservationsOk==false, do not put in the variables associated to this 
+					// if subjectLine==-1, do not put in the variables associated to this 
 					// timestep (cannot use static att in this timestep because there where no dynamic att used)
-					if(observationsOk == false) {
+					if(subjectLine == -1) {
 						continue;
 					}
 					
 					for (int j = 0; j < numAttributes; j++) {
 						String value = dataLine[j+1];
 						
-						if( value.equals("?") == true ) { // Vamos ver se consigo pondo aqui -1 nos missings consigo depois calcular as probabilidades bem
-							usefulObservations[t][numSubjects[t]][j] = -1;
+						if( value.length() == 0 || value.equals("?") == true ) { // Vamos ver se consigo pondo aqui -1 nos missings consigo depois calcular as probabilidades bem
+							usefulObservations[t][subjectLine][j] = -1;
 							continue;
 						}
 						
 						int attributeId = j % numAttributes;
 						Attribute attribute = attributes.get(attributeId);
 						attribute.add(value);
-						usefulObservations[t][numSubjects[t]][j] = attribute.getIndex(value);
+						usefulObservations[t][subjectLine][j] = attribute.getIndex(value);
 					}
 					numSubjects[t]++;
 				}
 				
 			}
 			
-//			i=0;
-//			System.out.println("Matriz estatica:");
-//			for(int[][] matriz : usefulObservations) {
-//				for(int[] linha : matriz) {
-//					for(int value : linha) {
-//						if(value != -1)
-//							System.out.print(attributes.get(i).get(value) + "  ");
-//						else
-//							System.out.print(-1);
-//						i++;
-//					}
-//					i=0;
-//					System.out.println("");
-//				}
-//				System.out.println("");
-//			}
+			i=0;
+			System.out.println("Matriz estatica:");
+			for(int[][] matriz : usefulObservations) {
+				for(int[] linha : matriz) {
+					for(int value : linha) {
+						if(value != -1)
+							System.out.print(attributes.get(i).get(value) + "  ");
+						else
+							System.out.print(-1 + "   ");
+						i++;
+					}
+					i=0;
+					System.out.println("");
+				}
+				System.out.println("");
+			}
 
 		} catch (IOException e) {
 			System.err.println("File " + usefulObservationsFileName + " could not be opened.");
