@@ -157,7 +157,7 @@ public class DynamicBayesNet {
 		StringBuilder sb = new StringBuilder();
 		String ls = System.getProperty("line.separator");
 		String dl = ls + ls;
-		int n = attributes.size(); int n_static = staticAttributes.size();
+		int n = attributes.size(); int n_static = (staticAttributes!=null) ? staticAttributes.size():0;
 		int T = transitionNets.size();
 
 		if (compactFormat && (T != 1 || markovLag != 1))
