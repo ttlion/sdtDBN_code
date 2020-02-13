@@ -621,6 +621,10 @@ public class BayesNet {
 		return parentNodes.get(i);
 	}
 	
+	public List<Integer> getStaticParents(int i){
+		return staticParentNodes.get(i);
+	}
+	
 	public Map<Configuration, List<Double>> getCPT(int i){
 		return parameters.get(i);
 	}
