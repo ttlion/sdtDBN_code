@@ -15,6 +15,7 @@ import com.github.tDBN.dbn.DynamicBayesNet;
 import com.github.tDBN.dbn.LLScoringFunction;
 import com.github.tDBN.dbn.MDLScoringFunction;
 import com.github.tDBN.dbn.Observations;
+import com.github.tDBN.dbn.ObservationsStatic;
 import com.github.tDBN.dbn.Scores;
 import com.github.tDBN.utils.Utils;
 import com.github.tDBN.dbn.ObservationsToInference;
@@ -101,6 +102,18 @@ public class Inference {
 				.withDescription("Timestep until which trajectory is to be determined")
 				.withLongOpt("trajectory").create("t");
 		
+		Option inputStatic = OptionBuilder.withArgName("file").hasArg()
+				.withDescription("Input CSV file with static features to be used for network learning.").withLongOpt("inputStaticFile")
+				.create("is");
+		
+		Option numStaticParents = OptionBuilder.withArgName("int").hasArg()
+				.withDescription("Maximum number of static parents of a certain node (default = 2)").withLongOpt("numStaticParents")
+				.create("b");
+		
+		Option newStaticObservation = OptionBuilder.withArgName("file").hasArg()
+				.withDescription("File with the static observations to make inference")
+				.withLongOpt("obsStaticFile").create("obsStatic");
+				
 		options.addOption(inputFile);
 		options.addOption(numParents);
 		options.addOption(outputFile);
@@ -119,6 +132,10 @@ public class Inference {
 		options.addOption(outputInferenceFile);
 		options.addOption(inferenceFormat);
 
+		options.addOption(inputStatic);
+		options.addOption(numStaticParents);
+		options.addOption(newStaticObservation);
+
 		CommandLineParser parser = new GnuParser();
 		try {
 
@@ -134,6 +151,9 @@ public class Inference {
 			boolean definedTrajOutput = cmd.hasOption("outputTrajectoryFile");
 			boolean definedOutputInferenceFile = cmd.hasOption("outputInferenceFile");
 			boolean definedinferenceFormat = cmd.hasOption("inferenceFormat");
+			
+			boolean hasStatic = cmd.hasOption("inputStaticFile");
+			boolean hasStaticObservFile = cmd.hasOption("obsStatic");
 
 			// TODO: check sanity
 			int markovLag = Integer.parseInt(cmd.getOptionValue("m", "1"));
@@ -141,7 +161,12 @@ public class Inference {
 
 			Observations o = new Observations(cmd.getOptionValue("i"), markovLag);
 
-			Scores s = new Scores(o, Integer.parseInt(cmd.getOptionValue("p")), stationary, verbose);
+			ObservationsStatic staticObservations = null;
+
+			if(hasStatic == true)
+				staticObservations = new ObservationsStatic(cmd.getOptionValue("is"), o.getSubjLinePerMtrx(), o.numTransitions(), o.getNumbSubjects());			
+
+			Scores s = new Scores(o, Integer.parseInt(cmd.getOptionValue("p")), stationary, verbose, staticObservations, Integer.parseInt(cmd.getOptionValue("b", "2")));
 			if (cmd.hasOption("s") && cmd.getOptionValue("s").equalsIgnoreCase("ll")) {
 				if (verbose)
 					System.out.println("Evaluating network with LL score.");
@@ -169,7 +194,7 @@ public class Inference {
 			dbn = s.toDBN(root, spanning);
 
 			if (printParameters)
-				dbn.learnParameters(o);
+				dbn.learnParameters(o, stationary, staticObservations);
 
 			String output;
 			if (cmd.hasOption("d")) {
@@ -203,9 +228,14 @@ public class Inference {
 				}
 				
 				if(printParameters == false) // Parameters were not learned before so they should be now to perform inference
-					dbn.learnParameters(o);
+					dbn.learnParameters(o, stationary, staticObservations);
 				
-				ObservationsToInference observToInference = new ObservationsToInference(cmd.getOptionValue("obs"), markovLag, o.getAttributes());
+				ObservationsToInference observToInference;
+				if(staticObservations != null && hasStaticObservFile){
+					observToInference = new ObservationsToInference(cmd.getOptionValue("obs"), markovLag, o.getAttributes(), cmd.getOptionValue("obsStatic"), staticObservations.getAttributes());
+				} else {
+					observToInference = new ObservationsToInference(cmd.getOptionValue("obs"), markovLag, o.getAttributes(), null, null);
+				}
 				
 				if (getMostProbTraj == true) {
 					
