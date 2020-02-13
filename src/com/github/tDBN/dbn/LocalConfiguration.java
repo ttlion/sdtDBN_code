@@ -35,6 +35,10 @@ public class LocalConfiguration extends Configuration {
 		this.considerChild = original.considerChild;
 	}
 	
+	public LocalConfiguration(List<Attribute> attributes, int[] configuration) {
+		super(attributes,configuration);
+	}
+	
 	public LocalConfiguration(List<Attribute> attributes, int markovLag, List<Integer> parentNodesPast,
 			List<Integer> parentNodesPresent, int childNode) {
 		super(attributes, markovLag);
@@ -223,29 +227,4 @@ public class LocalConfiguration extends Configuration {
 		System.out.println(c.getNumParameters());
 	}
 
-	@Override
-	public int hashCode() {
-		final int prime = 31;
-		int result = super.hashCode();
-		result = prime * result + (considerChild ? 1231 : 1237);
-		result = prime * result + Arrays.hashCode(parentIndices);
-		return result;
-	}
-
-	@Override
-	public boolean equals(Object obj) {
-		if (this == obj)
-			return true;
-		if (!super.equals(obj))
-			return false;
-		if (getClass() != obj.getClass())
-			return false;
-		LocalConfiguration other = (LocalConfiguration) obj;
-		if (considerChild != other.considerChild)
-			return false;
-		if (!Arrays.equals(parentIndices, other.parentIndices))
-			return false;
-		return true;
-	}
-	
 }

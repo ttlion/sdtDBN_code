@@ -30,6 +30,14 @@ public class Configuration {
 	protected Configuration(List<Attribute> attributes, int[] configuration) {
 		this.attributes = attributes;
 		this.configuration = configuration;
+		this.markovLag = ( configuration.length / ( attributes.size() ) ) - 1;
+		
+		for(int i=0; i < attributes.size(); i++) {
+			if(configuration[ ( markovLag * attributes.size() ) + i ] == 0) {
+				this.childNode = i;
+				break;
+			}
+		}
 	}
 
 	protected void reset() {

@@ -20,6 +20,12 @@ public class LocalConfigurationWithStatic extends LocalConfiguration {
 		this.staticParentIndices = original.staticParentIndices.clone();		
 	}
 	
+	public LocalConfigurationWithStatic(List<Attribute> attributes, int[] configuration, List<Attribute> staticAttributes, int[] staticConfiguration) {
+		super(attributes,configuration);
+		this.staticAttributes = staticAttributes;
+		this.staticConfiguration = staticConfiguration;
+	}
+	
 	public LocalConfigurationWithStatic(List<Attribute> attributes, int markovLag, List<Integer> parentNodesPast,
 			int childNode, List<Attribute> staticAttributes, List<Integer> staticParentSet) {
 		this(attributes, markovLag, parentNodesPast, null, childNode, staticAttributes, staticParentSet);
@@ -222,9 +228,7 @@ public class LocalConfigurationWithStatic extends LocalConfiguration {
 	public int hashCode() {
 		final int prime = 31;
 		int result = super.hashCode();
-		result = prime * result + ((staticAttributes == null) ? 0 : staticAttributes.hashCode());
 		result = prime * result + Arrays.hashCode(staticConfiguration);
-		result = prime * result + Arrays.hashCode(staticParentIndices);
 		return result;
 	}
 
@@ -237,14 +241,7 @@ public class LocalConfigurationWithStatic extends LocalConfiguration {
 		if (getClass() != obj.getClass())
 			return false;
 		LocalConfigurationWithStatic other = (LocalConfigurationWithStatic) obj;
-		if (staticAttributes == null) {
-			if (other.staticAttributes != null)
-				return false;
-		} else if (!staticAttributes.equals(other.staticAttributes))
-			return false;
 		if (!Arrays.equals(staticConfiguration, other.staticConfiguration))
-			return false;
-		if (!Arrays.equals(staticParentIndices, other.staticParentIndices))
 			return false;
 		return true;
 	}
