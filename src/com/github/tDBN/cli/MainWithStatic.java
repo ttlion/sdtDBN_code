@@ -19,6 +19,14 @@ import com.github.tDBN.dbn.ObservationsStatic;
 import com.github.tDBN.dbn.Scores;
 import com.github.tDBN.utils.Utils;
 
+/**
+ * Perform only learning of a tDBN using both dynamic and static attributes.
+ * 
+ * This class improves LearnFromFile, to learn a tDBN only with dynamic attributes, to learn a tDBN also with static attributes.
+ * 
+ * @author Tiago Leao
+ * 
+ */
 public class MainWithStatic {
 
 	@SuppressWarnings({ "static-access" })

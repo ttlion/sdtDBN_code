@@ -20,6 +20,15 @@ import com.github.tDBN.dbn.Scores;
 import com.github.tDBN.utils.Utils;
 import com.github.tDBN.dbn.ObservationsToInference;
 
+/**
+ * Class with main method, to perform learning and inference of a tDBN using both dynamic and static attributes.
+ * 
+ * This class improves LearnFromFile, to learn a tDBN only with dynamic attributes, adding to it MainWithStatic, 
+ * to learn a tDBN also with static attributes, and also allowing the user to perform inference on the learned tDBN.
+ * 
+ * @author Tiago Leao
+ * 
+ */
 public class Inference {
 
 	@SuppressWarnings({ "static-access" })
@@ -78,6 +87,8 @@ public class Inference {
 		Option parameters = OptionBuilder.withDescription("Learns and outputs the network parameters.")
 				.withLongOpt("parameters").create("pm");
 		
+		// New parameters introduced by Tiago Leao come next:
+		
 		Option newObservation = OptionBuilder.withArgName("file").hasArg()
 				.withDescription("File with the observations where inference should be done")
 				.withLongOpt("obsFile").create("obs");
@@ -125,13 +136,13 @@ public class Inference {
 		options.addOption(spanningTree);
 		options.addOption(nonStationary);
 		options.addOption(parameters);
+		
 		options.addOption(inferenceFile);
 		options.addOption(newObservation);
 		options.addOption(outputTrajectoryFile);
 		options.addOption(trajMaxTimestep);
 		options.addOption(outputInferenceFile);
 		options.addOption(inferenceFormat);
-
 		options.addOption(inputStatic);
 		options.addOption(numStaticParents);
 		options.addOption(newStaticObservation);
@@ -145,13 +156,13 @@ public class Inference {
 			boolean stationary = !cmd.hasOption("nonStationary");
 			boolean spanning = cmd.hasOption("spanning");
 			boolean printParameters = cmd.hasOption("parameters");
+			
 			boolean makeInference = cmd.hasOption("obsFile");
 			boolean makeInferenceAtt = cmd.hasOption("inferenceFile");
 			boolean getMostProbTraj = cmd.hasOption("trajectory");
 			boolean definedTrajOutput = cmd.hasOption("outputTrajectoryFile");
 			boolean definedOutputInferenceFile = cmd.hasOption("outputInferenceFile");
 			boolean definedinferenceFormat = cmd.hasOption("inferenceFormat");
-			
 			boolean hasStatic = cmd.hasOption("inputStaticFile");
 			boolean hasStaticObservFile = cmd.hasOption("obsStatic");
 
@@ -162,7 +173,8 @@ public class Inference {
 			Observations o = new Observations(cmd.getOptionValue("i"), markovLag);
 
 			ObservationsStatic staticObservations = null;
-
+			
+			// Fill staticObservations only if they are provided
 			if(hasStatic == true)
 				staticObservations = new ObservationsStatic(cmd.getOptionValue("is"), o.getSubjLinePerMtrx(), o.numTransitions(), o.getNumbSubjects());			
 
@@ -219,7 +231,9 @@ public class Inference {
 				}
 				System.out.println(output);
 			}
-
+			
+			// Starting here is the inference part of the program:
+			
 			if(makeInference == true) {
 				
 				if(makeInferenceAtt == false && getMostProbTraj==false) {
@@ -230,14 +244,14 @@ public class Inference {
 				if(printParameters == false) // Parameters were not learned before so they should be now to perform inference
 					dbn.learnParameters(o, stationary, staticObservations);
 				
-				ObservationsToInference observToInference;
+				ObservationsToInference observToInference; // Check whether the observations to inference should be filled only with dynamic observations or also with sattic observations
 				if(staticObservations != null && hasStaticObservFile){
 					observToInference = new ObservationsToInference(cmd.getOptionValue("obs"), markovLag, o.getAttributes(), cmd.getOptionValue("obsStatic"), staticObservations.getAttributes());
 				} else {
 					observToInference = new ObservationsToInference(cmd.getOptionValue("obs"), markovLag, o.getAttributes(), null, null);
 				}
 				
-				if (getMostProbTraj == true) {
+				if (getMostProbTraj == true) { // To perform the option -t
 					
 					int timestepMax = Integer.parseInt(cmd.getOptionValue("t", "-1"));
 					if(timestepMax == -1) {
@@ -251,7 +265,7 @@ public class Inference {
 				
 				boolean presentDistr = false;
 				
-				if (makeInferenceAtt == true) {
+				if (makeInferenceAtt == true) { // To perform inference on specific attributes specified by user
 					observToInference.parseAttributes(cmd.getOptionValue("inf"));
 					
 					if(definedinferenceFormat == true && cmd.getOptionValue("inferenceFormat").equalsIgnoreCase("distrib") )
