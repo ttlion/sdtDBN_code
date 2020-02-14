@@ -5,9 +5,12 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.ListIterator;
 import java.util.Map;
+import java.util.Map.Entry;
 
 import com.github.tDBN.utils.Utils;
 
@@ -30,10 +33,14 @@ public class ObservationsToInference {
 	 */
 	private int[][][] usefulObservations;
 
+	private int[][] staticUsefulObservations;
+
 	/**
 	 * Each column of the useful observation data refers to an attribute.
 	 */
 	private List<Attribute> attributes;
+
+	private List<Attribute> staticAttributes;
 
 	/**
 	 * Number of subjects per transition. Only those who have complete data for
@@ -47,10 +54,14 @@ public class ObservationsToInference {
 	 */
 	private String observationsFileName;
 
+	private String staticObservationsFileName;
+
 	/**
 	 * Header line of input useful observations CSV file.
 	 */
 	private String[] observationsHeader;
+
+	private String[] staticObservationsHeader;
 
 	/**
 	 * Order of the Markov process, which is the number of previous time slices
@@ -64,9 +75,12 @@ public class ObservationsToInference {
 	private int matrixWithAllPredictions[][][];
 	private String mostProbable[][];
 	
+	// AQUI COMO CADA SUBJECT ESTA SEMPRE NA MESMA LINHA, SO E PRECISO MAPA  
+	// DE STRING PRA INTEGER (EM VEZ DE PARA ARRAY COMO E FEITO EM Observations.java)
+	private Map<String, Integer> subjectLineInMatrices; 
 	
-	public ObservationsToInference(String obsFileName, Integer markovLag, List<Attribute> inputAttributes) {
-		this.observationsFileName = obsFileName;
+	public ObservationsToInference(String obsFileName, Integer markovLag, List<Attribute> inputAttributes, String staticObsFileName, List<Attribute> inputStaticAttributes) {
+		this.observationsFileName = obsFileName; this.staticObservationsFileName = staticObsFileName;
 		this.markovLag = markovLag != null ? markovLag : 1;
 		
 		if (inputAttributes == null) {
@@ -74,6 +88,7 @@ public class ObservationsToInference {
 			System.exit(1);
 		} else {
 			this.attributes = inputAttributes;
+			this.staticAttributes = inputStaticAttributes;
 		}
 		readFromFiles();
 	}
@@ -100,7 +115,7 @@ public class ObservationsToInference {
 
 			observationsHeader = processHeader(header, numAttributes);
 			
-			if ( checkHeaderFormat(observationsHeader) == false ) {
+			if ( checkHeaderFormat(observationsHeader, attributes) == false ) {
 				System.err.println("Format (order of variables) of observation file to make inference is not the same of learning file format");
 				System.exit(1);
 			}
@@ -110,6 +125,8 @@ public class ObservationsToInference {
 			usefulObservations = new int[numTransitions][totalNumSubjects][(markovLag + 1) * numAttributes];
 			numSubjects = new int[numTransitions];
 			subjects = new String[totalNumSubjects];
+
+			subjectLineInMatrices = new LinkedHashMap<String, Integer>(totalNumSubjects);
 
 			String[] dataLine;
 			int i=0;
@@ -129,6 +146,8 @@ public class ObservationsToInference {
 				}
 				
 				subjects[i++] = dataLine[0]; // Store subjects IDs
+
+				subjectLineInMatrices.put(dataLine[0], new Integer(numSubjects[0]));
 
 				for (int t = 0; t < numTransitions; t++) {
 
@@ -154,7 +173,7 @@ public class ObservationsToInference {
 				}
 			}
 			
-//			System.out.println("Matrix Criada!!:");
+//			System.out.println("matrix Dynamic criada!!:");
 //			for(int[][] matriz: usefulObservations) {
 //				for(int[] linha : matriz) {
 //					for(int valor : linha){
@@ -167,6 +186,100 @@ public class ObservationsToInference {
 
 		} catch (IOException e) {
 			System.err.println("File " + observationsFileName + " could not be opened.");
+			e.printStackTrace();
+			System.exit(1);
+		}
+		
+		// Return if there are no static observations
+		if (staticObservationsFileName == null) 
+			return;
+		
+		// Parse static observations file
+		try {
+			
+			// open and parse the static observations csv file
+			CSVReader reader = new CSVReader(new FileReader(staticObservationsFileName));
+			List<String[]> lines = reader.readAll();
+			reader.close();
+
+			ListIterator<String[]> li = lines.listIterator();
+
+			// get first line
+			String[] header = li.next();
+
+			int numStaticAttributes = (header.length - 1);
+			
+			// Parse static header	
+			staticObservationsHeader = new String[numStaticAttributes];
+			String auxiliarStaticHeder[] = Arrays.copyOfRange(header, 1, numStaticAttributes + 1);
+			int i = 0;
+			for (String attName : auxiliarStaticHeder)
+				staticObservationsHeader[i++] = attName;
+			
+			// Check if same format of learning static file
+			if ( checkHeaderFormat(staticObservationsHeader, staticAttributes) == false ) {
+				System.err.println("Format (order of variables) of static observation file is not the same of static learning file format");
+				System.exit(1);
+			}
+			
+			// allocate static observations matrix
+			staticUsefulObservations = new int[subjects.length][numStaticAttributes];
+			
+			String[] dataLine;
+			while (li.hasNext()) {
+
+				dataLine = li.next();
+
+				// check for line sanity
+				if (dataLine.length != numStaticAttributes + 1) {
+					System.err.println(Arrays.deepToString(dataLine));
+					System.err.println("Static Observations file: input data line does not have the correct number of columns.");
+					System.err.println("Line length: " + dataLine.length);
+					System.err.println("Number of attributes: " + numStaticAttributes);
+					System.exit(1);
+				}
+				
+				String subject = dataLine[0];
+				
+				Integer subjectLine = subjectLineInMatrices.get(subject);
+				
+				if( subjectLine == null) {
+					System.err.println("Subject "+ subject + " is not in dynamic observations file! Aborting!");
+					System.exit(1);
+				}
+				
+				for (int j = 1; j < (numStaticAttributes + 1); j++) {
+					
+					String value = dataLine[j];
+					int staticAttributeId = j-1;
+					
+					if (value.length() == 0 || value.equals("?")) { // Missing value
+						staticUsefulObservations[subjectLine][staticAttributeId] = -1;
+						continue;
+					}
+					
+					Attribute staticAttribute = staticAttributes.get(staticAttributeId);
+					
+					if (staticAttribute.hasValue(value) == false) { // Value not in static training data
+						staticUsefulObservations[subjectLine][staticAttributeId] = -2;
+						continue;
+					}
+					
+					staticUsefulObservations[subjectLine][staticAttributeId] = staticAttribute.getIndex(value);
+				}
+				
+			}
+			
+//			System.out.println("matrix Static criada!!:");
+//			for(int[] linha : staticUsefulObservations) {
+//				for(int valor : linha){
+//					System.out.print(valor + " ");
+//				}
+//				System.out.println();
+//			}
+			
+		} catch (IOException e) {
+			System.err.println("File " + staticObservationsFileName + " could not be opened.");
 			e.printStackTrace();
 			System.exit(1);
 		}
@@ -230,9 +343,9 @@ public class ObservationsToInference {
 		return newHeader;
 	}
 	
-	private boolean checkHeaderFormat(String[] inputHeader) {
+	private boolean checkHeaderFormat(String[] inputHeader, List<Attribute> attributesToCompare) {
 		int i=0;
-		for(Attribute att : attributes) {
+		for(Attribute att : attributesToCompare) {
 			if(att.getName().equals(inputHeader[i]) == false ) return false;
 			i++;
 		}
@@ -322,9 +435,11 @@ public class ObservationsToInference {
 		int attributeID = 0, i=0, transitionNetID = 0, attToPrintDim = 0, currLineIndx=0, maxProbIndx;
 		
 		int configs[][] = new int[usefulObservations[0].length][(markovLag + 1) * attributes.size()]; // Tem que ter todos os att do mesmo instante e os de tras necessarios consoante markovLag
+		int staticConfigs[][] = ( staticUsefulObservations != null ) ? new int[usefulObservations[0].length][staticAttributes.size()] : null ;
+		
 		Configuration desiredConfigs[] = new Configuration[usefulObservations[0].length];
 		
-		List<Integer> parents;
+		List<Integer> parents, staticParents;
 		Map<Configuration, List<Double>> cpt;
 		List<Double> distribution;
 		double count, maxProb;
@@ -363,43 +478,82 @@ public class ObservationsToInference {
 			// Obter todos os pais
 			if (stationary == true) {
 				parents = dbn.getTransitionNet(0).getParents(attributeID);
+				staticParents = dbn.getTransitionNet(0).getStaticParents(attributeID);
 			} else {
 				parents = dbn.getTransitionNet(transitionNetID).getParents(attributeID);
+				staticParents = dbn.getTransitionNet(transitionNetID).getStaticParents(attributeID);
 			}
 			
 			// Inicializar os valores dos atributos (-1 se nao e pai, 0 se proprio attributo)
 			for(int[] line : configs) {
 				for(i=0; i<line.length; i++)
-					line[i] = -1; // Por default meter que atributo nao � pai, os pais serao postos num ciclo a seguir
+					line[i] = -1; // Por default meter que atributo nao e pai, os pais serao postos num ciclo a seguir
 				
 				line[attributes.size() * markovLag + attributeID] = 0; // O proprio no child tem que ter 0 na sua posicao
 			}
 			
+			// Inicializar os valores dos atributos estaticos (todos -1) se for necessario
+			if( staticParents.isEmpty() == false && staticConfigs != null ) {
+				for(int[] line : staticConfigs) {
+					for(i=0; i<line.length; i++)
+						line[i] = -1;
+				}
+			}
+				
 			i=-1;
 			for(int[] observation : usefulObservations[transitionNetID]) {
 				i++;
 				
 				canMakeInference[i] = 0;
 				//System.out.println("Values for subject " + i + ": ");
-				for(Integer parent : parents) {
+				
+				// Check if all necessary staticParents are given in the observation being analyzed, if not, inference is not possible
+				for(Integer staticParent : staticParents) {
 					
-					if(observation[parent]<0) {
-						//System.out.println("CALLING MOST PROBABLE WITH (netID=" + (transitionNetID + parent/(attributes.size()) - markovLag) + ", attID=" + parent%(attributes.size()) + ", " + stationary + ", tag= " + i + ")");
-						dbn.getMostProbable(transitionNetID + parent/(attributes.size()) - markovLag, parent%(attributes.size()), stationary, usefulObservations, i);
-					}
-					
-					configs[i][parent] = observation[parent];
-					//System.out.println("\tParent " + attributes.get(parent%(attributes.size())).getName() + "[" + (transitionNetID + parent/(attributes.size())) + "]" + " -- Value: " + observation[parent]);
-					
-					if(configs[i][parent] < 0) { // Nao foi possivel prever porque nao havia rede
+					if(staticUsefulObservations == null) { // Has static parents, but no static observations were given, inference not possible
 						canMakeInference[i] = -1;
 						break;
+					}
+					
+					if(staticUsefulObservations[i][staticParent] < 0) { // The necessary static observation was not given, inference not possible
+						canMakeInference[i] = -1;
+						break;
+					}
+					staticConfigs[i][staticParent] = staticUsefulObservations[i][staticParent];
+				}
+				
+				if(canMakeInference[i] == 0) {
+					for(Integer parent : parents) {
+						
+						if(observation[parent]<0) {
+							//System.out.println("CALLING MOST PROBABLE WITH (netID=" + (transitionNetID + parent/(attributes.size()) - markovLag) + ", attID=" + parent%(attributes.size()) + ", " + stationary + ", tag= " + i + ")");
+							dbn.getMostProbable(transitionNetID + parent/(attributes.size()) - markovLag, parent%(attributes.size()), stationary, usefulObservations, i, staticUsefulObservations);
+							System.out.println("\tEstimado " + attributes.get(parent%(attributes.size())).getName() + "[" + (transitionNetID + parent/(attributes.size())) + "]" + " -- Value: " + observation[parent]);
+						}
+						
+						configs[i][parent] = observation[parent];
+						//System.out.println("\tParent " + attributes.get(parent%(attributes.size())).getName() + "[" + (transitionNetID + parent/(attributes.size())) + "]" + " -- Value: " + observation[parent]);
+						
+						if(configs[i][parent] < 0) { // Nao foi possivel prever porque nao havia rede
+							canMakeInference[i] = -1;
+							break;
+						}
 					}
 				}
 				
 				// Configuration e feita com a configs[i], que representa a configuracao dos pais no caso que se esta a testar
-				if(canMakeInference[i] == 0)
-					desiredConfigs[i] = new Configuration(attributes, configs[i]);
+				if(canMakeInference[i] == 0) {
+					
+					if(staticParents.isEmpty() == false) { // Criar configuracao usando static attributes
+						desiredConfigs[i] = new LocalConfigurationWithStatic(attributes, configs[i], staticAttributes, staticConfigs[i]);
+						System.out.println("CRiada config STATIC para no "+subjects[i]+":" + desiredConfigs[i]);
+					} else { // Criar configuracao nao usando static attributes
+						desiredConfigs[i] = new LocalConfiguration(attributes, configs[i]);
+						System.out.println("Criada config NAO STATIC para no "+subjects[i]+":" + desiredConfigs[i]);
+					}
+					
+				}
+					
 			}
 			
 			// Imprimir atributo e instante temporal que se esta a fazer inferencia e os seus valores possiveis
@@ -428,6 +582,7 @@ public class ObservationsToInference {
 					continue;
 				}
 				
+				System.out.println("Config subject " + subjects[i]  + ":" + desiredConfig);
 				distribution = cpt.get(desiredConfig);
 				
 				count = 0.0; 
@@ -529,7 +684,7 @@ public class ObservationsToInference {
 			for(subject=0; subject < subjects.length; subject++)
 				for(att=0; att < (markovLag + 1) * attributes.size(); att++)
 					if(matrixWithAllPredictions[transitionNetID][subject][att] < 0) // Case where value not given in original data
-						dbn.getMostProbable(transitionNetID + att/(attributes.size()) - markovLag, att%(attributes.size()), stationary, matrixWithAllPredictions, subject);
+						dbn.getMostProbable(transitionNetID + att/(attributes.size()) - markovLag, att%(attributes.size()), stationary, matrixWithAllPredictions, subject, staticUsefulObservations);
 		
 		if(maxNumTransNet <= usefulObservations.length) return;
 		
@@ -537,7 +692,7 @@ public class ObservationsToInference {
 		for(transitionNetID=usefulObservations.length; transitionNetID < maxNumTransNet; transitionNetID++)
 			for(subject=0; subject < subjects.length; subject++)
 				for(att=0; att < (markovLag + 1) * attributes.size(); att++)
-					dbn.getMostProbable(transitionNetID + att/(attributes.size()) - markovLag, att%(attributes.size()), stationary, matrixWithAllPredictions, subject);
+					dbn.getMostProbable(transitionNetID + att/(attributes.size()) - markovLag, att%(attributes.size()), stationary, matrixWithAllPredictions, subject, staticUsefulObservations);
 		
 	}
 	

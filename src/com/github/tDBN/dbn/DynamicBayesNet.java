@@ -346,12 +346,12 @@ public class DynamicBayesNet {
 
 	}
 
-	public void getMostProbable(int transitionNetID, int attributeID, boolean stationary, int[][][] observations, int subject) {
+	public void getMostProbable(int transitionNetID, int attributeID, boolean stationary, int[][][] observations, int subject, int[][] staticObservations) {
 		
 		if(transitionNetID<0) return; // Neste caso nao se conseguira prever nada porque timestep do no e menor do que markovLag
 
 		int n = attributes.size(), i=0, value;
-		int config[] = new int[(markovLag + 1) * n];
+		int config[] = new int[(markovLag + 1) * n]; int staticConfig[] = (staticAttributes!=null) ? new int[staticAttributes.size()] : null;
 		Configuration desiredConfig;
 		List<Double> distribution;
 		Map<Configuration, List<Double>> cpt;
@@ -359,11 +359,13 @@ public class DynamicBayesNet {
 		boolean allParentsSpecified;
 		
 		// Obter todos os pais
-		List<Integer> parents;
+		List<Integer> parents, staticParents;
 		if (stationary == true) {
 			parents = this.getTransitionNet(0).getParents(attributeID);
+			staticParents = this.getTransitionNet(0).getStaticParents(attributeID);
 		} else {
 			parents = this.getTransitionNet(transitionNetID).getParents(attributeID);
+			staticParents = this.getTransitionNet(transitionNetID).getStaticParents(attributeID);
 		}
 		
 		Stack<Integer> stackAttID = new Stack<Integer>();
@@ -373,6 +375,15 @@ public class DynamicBayesNet {
 			//System.out.println("Pondo na STACKaaaaaa: " + attributes.get(attributeID).getName() + "[" + (transitionNetID+markovLag) + "]");
 			stackAttID.push(attributeID);
 			stackTimesteps.push(transitionNetID);
+		}
+
+		for(Integer staticParent : staticParents) { // If some staticParent not specified, inference is not possible
+			
+			if(staticObservations == null) return;
+			
+			if(staticObservations[subject][staticParent] < 0) {
+				return;
+			}
 		}
 
 		for(Integer parent : parents) {
@@ -401,8 +412,19 @@ public class DynamicBayesNet {
 			
 			if (stationary == true) {
 				parents = this.getTransitionNet(0).getParents(attributeID);
+				staticParents = this.getTransitionNet(0).getStaticParents(attributeID);
 			} else {
 				parents = this.getTransitionNet(transitionNetID).getParents(attributeID);
+				staticParents = this.getTransitionNet(transitionNetID).getStaticParents(attributeID);
+			}
+			
+			for(Integer staticParent : staticParents) { // If some staticParent not specified, inference is not possible
+				
+				if(staticObservations == null) return;
+				
+				if(staticObservations[subject][staticParent] < 0) {
+					return;
+				}
 			}
 			
 			allParentsSpecified = true;
@@ -432,10 +454,22 @@ public class DynamicBayesNet {
 				
 				config[n * markovLag + attributeID] = 0; // O proprio no child tem que ter 0 na sua posicao
 				
+				if(staticParents.isEmpty() == false) { // Neste caso ha static parents que tambem tem que ser inicializados!
+					for(i=0; i<staticConfig.length; i++)
+						staticConfig[i] = -1;
+				}
+				
 				for(Integer parent : parents) 
 					config[parent] = observations[transitionNetID][subject][parent];
 				
-				desiredConfig = new Configuration(attributes, config);
+				for(Integer staticParent : staticParents)
+					staticConfig[staticParent] = staticObservations[subject][staticParent];
+				
+				if(staticParents.isEmpty() == true) {
+					desiredConfig = new LocalConfiguration(attributes, config);
+				} else {
+					desiredConfig = new LocalConfigurationWithStatic(attributes, config, staticAttributes, staticConfig);
+				}
 				
 				// Obter a CPT correta relativa ao atributo em questao na transicao em questao
 				if (stationary == true) {
@@ -443,6 +477,8 @@ public class DynamicBayesNet {
 				} else {
 					cpt = this.getTransitionNet(transitionNetID).getCPT(attributeID);
 				}
+				
+				System.out.println("Predicting " + attributes.get(attributeID).getName() + "["+ (transitionNetID+markovLag) +"] for subject " + subject + ":" + desiredConfig);
 				
 				distribution = cpt.get(desiredConfig);
 				
@@ -456,7 +492,7 @@ public class DynamicBayesNet {
 				
 				observations[transitionNetID][subject][n * markovLag + attributeID]  = value; // Meter valor no timestep que se esta a analisar
 				
-				//System.out.println("Valor escolhido: " + attributes.get(attributeID).get(value));
+				System.out.println("\tValor escolhido: " + attributes.get(attributeID).get(value));
 				
 				// Propagar valor para as outras matrizes de observacoes
 				for(i=1; i < (markovLag+1); i++) {
