@@ -3,6 +3,13 @@ package com.github.tDBN.dbn;
 import java.util.Arrays;
 import java.util.List;
 
+/**
+ * 
+ * Defines a configuration of parents of a certain child node.
+ * 
+ * @author zlm
+ * 
+ */
 public class Configuration {
 
 	protected List<Attribute> attributes;

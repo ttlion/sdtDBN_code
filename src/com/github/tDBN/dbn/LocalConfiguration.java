@@ -4,6 +4,16 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
+/**
+ * 
+ * Extends the general configuration to represent a configuration using the 
+ * array description of size (markovLag+1) * n, where in each array there are also
+ * the proper parents needed from past slices.
+ * 
+ * @author zlm
+ * @author Tiago Leao
+ * 
+ */
 public class LocalConfiguration extends Configuration {
 
 	protected int[] parentIndices;
@@ -13,7 +23,7 @@ public class LocalConfiguration extends Configuration {
 	 * current configuration. In this case, N_{ijk} is what is being counted.
 	 */
 	protected boolean considerChild = true;
-
+	
 	/**
 	 * Allocates the configuration array and sets all parents and the child to
 	 * their first value. All input nodes must lie in the range
@@ -28,17 +38,6 @@ public class LocalConfiguration extends Configuration {
 	 * @param childNode
 	 *            child node in t+1
 	 */
-	
-	public LocalConfiguration(LocalConfiguration original) {
-		super(original);
-		this.parentIndices = original.parentIndices.clone();
-		this.considerChild = original.considerChild;
-	}
-	
-	public LocalConfiguration(List<Attribute> attributes, int[] configuration) {
-		super(attributes,configuration);
-	}
-	
 	public LocalConfiguration(List<Attribute> attributes, int markovLag, List<Integer> parentNodesPast,
 			List<Integer> parentNodesPresent, int childNode) {
 		super(attributes, markovLag);
@@ -65,10 +64,28 @@ public class LocalConfiguration extends Configuration {
 
 		this.childNode = childNode;
 		resetChild();
-		
-//		System.out.print("Config Dinamica: ");
-//		for(int valor : configuration) System.out.print(valor + ", ");
-//		System.out.println("");
+	}
+	
+	/**
+	 * For easily cloning a LocalConfiguration object.
+	 * 
+	 */
+	public LocalConfiguration(LocalConfiguration original) {
+		super(original);
+		this.parentIndices = original.parentIndices.clone();
+		this.considerChild = original.considerChild;
+	}
+	
+	/**
+	 * Allocates Configuration only based on a list of attributes and the configuration array.
+	 * 
+	 * @param attributes
+	 *            list of attributes characterizing the nodes
+	 * @param configuration
+	 *            array of integers, each integer representing a value of the proper attribute. -1 means the attribute is not in configuration.
+	 */
+	public LocalConfiguration(List<Attribute> attributes, int[] configuration) {
+		super(attributes, configuration);
 	}
 
 	public LocalConfiguration(List<Attribute> attributes, int markovLag, List<Integer> parentNodesPast,
@@ -107,11 +124,12 @@ public class LocalConfiguration extends Configuration {
 		return true;
 	}
 	
-	// Se forem dadas tb observacoes estaticas, ignorar porque se quer apenas o match com as dinamicas
+	/**
+	 * To ignore the static observations in case they are also given.
+	 */
 	public boolean matches(int[] observationDyn, int[] observationStatic) {
 		return matches(observationDyn);
 	}
-	
 
 	/**
 	 * Updates the configuration of parents' values by incrementing the current

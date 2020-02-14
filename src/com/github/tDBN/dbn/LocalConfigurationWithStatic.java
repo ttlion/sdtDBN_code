@@ -3,9 +3,14 @@ package com.github.tDBN.dbn;
 import java.util.Arrays;
 import java.util.List;
 
+/**
+ * 
+ * Extends the LocalConfiguration to represent a configuration also considering static parents
+ * 
+ * @author Tiago Leao
+ * 
+ */
 public class LocalConfigurationWithStatic extends LocalConfiguration {
-	
-	// Meter variaveis para as configuracoes dos pais static
 	
 	private List<Attribute> staticAttributes;
 
@@ -13,6 +18,10 @@ public class LocalConfigurationWithStatic extends LocalConfiguration {
 	
 	private int[] staticParentIndices;
 	
+	/**
+	 * For easily cloning a LocalConfigurationWithStatic object.
+	 * 
+	 */
 	public LocalConfigurationWithStatic(LocalConfigurationWithStatic original) {
 		super(original);
 		this.staticAttributes = original.staticAttributes;
@@ -20,6 +29,18 @@ public class LocalConfigurationWithStatic extends LocalConfiguration {
 		this.staticParentIndices = original.staticParentIndices.clone();		
 	}
 	
+	/**
+	 * Allocates LocalConfigurationWithStatic only based on lists of dynamic and static attributes and the configuration arrays of static and dynamic attributes.
+	 * 
+	 * @param attributes
+	 *            list of dynamic  attributes characterizing the nodes
+	 * @param configuration
+	 *            array of integers, each integer representing a value of the proper dynamic attribute. -1 means the attribute is not in configuration.
+	 * @param staticAttributes
+	 *            list of static  attributes characterizing the nodes
+	 * @param staticConfiguration
+	 *            array of integers, each integer representing a value of the proper static attribute. -1 means the attribute is not in configuration.
+	 */
 	public LocalConfigurationWithStatic(List<Attribute> attributes, int[] configuration, List<Attribute> staticAttributes, int[] staticConfiguration) {
 		super(attributes,configuration);
 		this.staticAttributes = staticAttributes;
@@ -31,6 +52,11 @@ public class LocalConfigurationWithStatic extends LocalConfiguration {
 		this(attributes, markovLag, parentNodesPast, null, childNode, staticAttributes, staticParentSet);
 	}
 	
+	/**
+	 * Calls LocalConfiguration constructor to allocate the dynamic parents configuration array.
+	 * Allocates static parents configuration array, setting all parents to their first value.
+	 * 
+	 */
 	public LocalConfigurationWithStatic(List<Attribute> attributes, int markovLag, List<Integer> parentNodesPast,
 			Integer parentNodesPresent, int childNode, List<Attribute> staticAttributes, List<Integer> staticParentSet) {
 		
@@ -43,21 +69,25 @@ public class LocalConfigurationWithStatic extends LocalConfiguration {
 		staticParentIndices = new int[numStaticParents];
 		staticConfiguration = new int[staticAttributes.size()];
 		
-		for(int j=0; j < staticAttributes.size(); j++) { // Reset staticConfiguration
+		for(int j=0; j < staticAttributes.size(); j++) { // Reset staticConfiguration array
 			staticConfiguration[j]=-1; 
 		}
 		
+		// Store indices of static parents in proper array (just as it is done with dynamic parents)
 		int i = 0;
-
 		if (staticParentSet != null)
-			for (Integer parentNode : staticParentSet) { // ATENCAO!! E AQUI QUE TOU A POR O INDICE DO PAI ESTATICO!!
+			for (Integer parentNode : staticParentSet) {
 				staticParentIndices[i++] = parentNode;
 			}
 		
-		resetStaticParents(); // So preciso de reset aos static porque os nao static ja tao reset (constructor de LocalConfiguration foi chamado)
+		// Only needed to reset static parents (LocalConfiguration constructor reseted dynamic parents)
+		resetStaticParents();
 		
 	}
 	
+	/**
+	 * Method overridden to also reset the static parents indices.
+	 */
 	@Override
 	public void resetParents() {
 		
@@ -69,12 +99,18 @@ public class LocalConfigurationWithStatic extends LocalConfiguration {
 			resetStaticParents();
 	}
 	
+	/**
+	 * Method to only reset static parents.
+	 */
 	public void resetStaticParents() {
 		for (int i = 0; i < staticParentIndices.length; i++) {
 			staticConfiguration[staticParentIndices[i]] = 0;
 		}
 	}
 	
+	/**
+	 * Method overridden to also take into account the static parents possible values.
+	 */
 	@Override
 	public int getParentsRange() {
 		if (parentIndices.length == 0 && staticParentIndices.length == 0 ) {
@@ -95,78 +131,57 @@ public class LocalConfigurationWithStatic extends LocalConfiguration {
 		return result;
 	}
 	
+	/**
+	 * Method overridden to also take into account the static parents.
+	 */
 	@Override
 	public int getNumParameters() {
 		return getParentsRange() * (getChildRange() - 1);
 	}
 	
+	/**
+	 * Method overridden to also take into account the static parents.
+	 */
 	@Override
 	public boolean nextParents() { 
-	
-		//TODO CONFIRMAR QUE ESTA BEM
-//		System.out.print("Pais antes:");
-//		for(int value : staticConfiguration)
-//			System.out.print(value + ", ");
-//		for(int value : configuration)
-//			System.out.print(value + ", ");
-//		System.out.println("");
-		
 		
 		int n = attributes.size();
 		int n_static = staticAttributes.size();
-
+		
+		// Try to change the value of a dynamic parent
 		for (int i = 0; i < parentIndices.length; i++) {
 			if (++configuration[parentIndices[i]] < attributes.get(parentIndices[i] % n).size()) {
-//				System.out.print("Pais dps 1oFOR:");
-//				for(int value : staticConfiguration)
-//					System.out.print(value + ", ");
-//				for(int value : configuration)
-//					System.out.print(value + ", ");
-//				System.out.println("");
 				return true;
 			} else {
 				configuration[parentIndices[i]] = 0;
 			}
 		}
 		
+		// If all dynamic parents values already tried, try to change the value of a static parent
 		for (int i = 0; i < staticParentIndices.length; i++) {
 			if (++staticConfiguration[staticParentIndices[i]] < staticAttributes.get(staticParentIndices[i] % n_static).size()) {
 				break;
 			} else {
 				staticConfiguration[staticParentIndices[i]] = 0;
-				if (i == staticParentIndices.length - 1) {
-					resetParents(); // SO AQUI DEPOIS DE SE VER OS STATIC TB E QUE SE FAZ RESET DOS PARENTS!!
-					
-//					System.out.print("Pais dps 2oFOR:");
-//					for(int value : staticConfiguration)
-//						System.out.print(value + ", ");
-//					for(int value : configuration)
-//						System.out.print(value + ", ");
-//					System.out.println("");
-					
+				if (i == staticParentIndices.length - 1) { // Case where all combinations of static and dynamic parents were checked
+					resetParents();	
 					return false;
 				}
 			}
 		}
-		
-//		System.out.print("Pais dps ENDs:");
-//		for(int value : staticConfiguration)
-//			System.out.print(value + ", ");
-//		for(int value : configuration)
-//			System.out.print(value + ", ");
-//		System.out.println("");
-		
 		return true;
 	}
 	
+	/**
+	 * Method overridden to also take into account the static parents.
+	 */
 	@Override
 	public boolean matches(int[] observationDyn, int[] observationStatic) {
 		
-		//TODO ESTARA TUDO?
 		
 		int n = attributes.size();
-//		int n_static = staticAttributes.size();
-
+		
+		// Check dynamic parents values
 		for (int i = 0; i < configuration.length; i++) {
 			if (configuration[i] > -1) {
 				if (observationDyn[i] != configuration[i]) {
@@ -177,6 +192,7 @@ public class LocalConfigurationWithStatic extends LocalConfiguration {
 			}
 		}
 		
+		// Check static parents values
 		for (int i = 0; i < staticConfiguration.length; i++) {
 			if (staticConfiguration[i] > -1) {
 				if (observationStatic[i] != staticConfiguration[i]) {
@@ -186,9 +202,11 @@ public class LocalConfigurationWithStatic extends LocalConfiguration {
 		}
 		
 		return true;
-		
 	}
 	
+	/**
+	 * Method overridden to also take into account the static parents.
+	 */
 	@Override
 	public String toString() {
 		StringBuilder sb = new StringBuilder();	
@@ -203,8 +221,8 @@ public class LocalConfigurationWithStatic extends LocalConfiguration {
 			}
 		}
 		
+		// Print dynamic config distribution
 		int n = attributes.size();
-		
 		for (int i = 0; i < configuration.length; i++) {
 			if (configuration[i] != -1 && i != n * markovLag + childNode) {
 				int lag = i / n;
@@ -223,7 +241,10 @@ public class LocalConfigurationWithStatic extends LocalConfiguration {
 		return sb.toString();
 		
 	}
-
+	
+	/**
+	 * Method overridden to also take into account the static configuration parents.
+	 */
 	@Override
 	public int hashCode() {
 		final int prime = 31;
@@ -231,7 +252,10 @@ public class LocalConfigurationWithStatic extends LocalConfiguration {
 		result = prime * result + Arrays.hashCode(staticConfiguration);
 		return result;
 	}
-
+	
+	/**
+	 * Checks the dynamic configuration and then checks the static configuration also.
+	 */
 	@Override
 	public boolean equals(Object obj) {
 		if (this == obj)
