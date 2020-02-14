@@ -478,7 +478,7 @@ public class DynamicBayesNet {
 					cpt = this.getTransitionNet(transitionNetID).getCPT(attributeID);
 				}
 				
-				System.out.println("Predicting " + attributes.get(attributeID).getName() + "["+ (transitionNetID+markovLag) +"] for subject " + subject + ":" + desiredConfig);
+				//System.out.println("Predicting " + attributes.get(attributeID).getName() + "["+ (transitionNetID+markovLag) +"] for subject " + subject + ":" + desiredConfig);
 				
 				distribution = cpt.get(desiredConfig);
 				
@@ -492,7 +492,7 @@ public class DynamicBayesNet {
 				
 				observations[transitionNetID][subject][n * markovLag + attributeID]  = value; // Meter valor no timestep que se esta a analisar
 				
-				System.out.println("\tValor escolhido: " + attributes.get(attributeID).get(value));
+				//System.out.println("\tValor escolhido: " + attributes.get(attributeID).get(value));
 				
 				// Propagar valor para as outras matrizes de observacoes
 				for(i=1; i < (markovLag+1); i++) {

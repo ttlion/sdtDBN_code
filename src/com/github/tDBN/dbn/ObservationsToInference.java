@@ -454,7 +454,7 @@ public class ObservationsToInference {
 			attributeID = infLine[0];
 			transitionNetID = infLine[1] - markovLag;
 			
-			System.out.println("\n\nDetermining " + attributes.get(attributeID).getName() + "[" + (transitionNetID+markovLag) + "]" );
+			//System.out.println("\n\nDetermining " + attributes.get(attributeID).getName() + "[" + (transitionNetID+markovLag) + "]" );
 			
 			if(transitionNetID < 0) {
 				sb.append("Distributions " + attributes.get(attributeID).getName() + "[" + (transitionNetID+markovLag) + "]:\n");
@@ -528,7 +528,7 @@ public class ObservationsToInference {
 						if(observation[parent]<0) {
 							//System.out.println("CALLING MOST PROBABLE WITH (netID=" + (transitionNetID + parent/(attributes.size()) - markovLag) + ", attID=" + parent%(attributes.size()) + ", " + stationary + ", tag= " + i + ")");
 							dbn.getMostProbable(transitionNetID + parent/(attributes.size()) - markovLag, parent%(attributes.size()), stationary, usefulObservations, i, staticUsefulObservations);
-							System.out.println("\tEstimado " + attributes.get(parent%(attributes.size())).getName() + "[" + (transitionNetID + parent/(attributes.size())) + "]" + " -- Value: " + observation[parent]);
+							//System.out.println("\tEstimado " + attributes.get(parent%(attributes.size())).getName() + "[" + (transitionNetID + parent/(attributes.size())) + "]" + " -- Value: " + observation[parent]);
 						}
 						
 						configs[i][parent] = observation[parent];
@@ -546,10 +546,10 @@ public class ObservationsToInference {
 					
 					if(staticParents.isEmpty() == false) { // Criar configuracao usando static attributes
 						desiredConfigs[i] = new LocalConfigurationWithStatic(attributes, configs[i], staticAttributes, staticConfigs[i]);
-						System.out.println("CRiada config STATIC para no "+subjects[i]+":" + desiredConfigs[i]);
+						//System.out.println("CRiada config STATIC para no "+subjects[i]+":" + desiredConfigs[i]);
 					} else { // Criar configuracao nao usando static attributes
 						desiredConfigs[i] = new LocalConfiguration(attributes, configs[i]);
-						System.out.println("Criada config NAO STATIC para no "+subjects[i]+":" + desiredConfigs[i]);
+						//System.out.println("Criada config NAO STATIC para no "+subjects[i]+":" + desiredConfigs[i]);
 					}
 					
 				}
@@ -582,7 +582,7 @@ public class ObservationsToInference {
 					continue;
 				}
 				
-				System.out.println("Config subject " + subjects[i]  + ":" + desiredConfig);
+				//System.out.println("Config subject " + subjects[i]  + ":" + desiredConfig);
 				distribution = cpt.get(desiredConfig);
 				
 				count = 0.0; 
