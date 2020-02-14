@@ -309,9 +309,10 @@ public class Observations {
 				}
 			}
 			
-			
 			numSubjects = new int[numTransitions];
 			subjectIsPresent = new LinkedHashMap<String, boolean[]>((int) Math.ceil(totalNumSubjects / 0.75));
+			
+			// To store the line of each subject in each temporal matrix usefulObservations[t][][]
 			subjectLinePerTemporalMatrix = new LinkedHashMap<String, int[]>((int) Math.ceil(totalNumSubjects / 0.75)); 
 
 			String[] dataLine = li.next();
@@ -392,7 +393,7 @@ public class Observations {
 							usefulObservations[t][numSubjects[t]][j] = attribute.getIndex(value);
 						}
 						
-						subjectLinePerTemporalMatrix.get(subject)[t] = numSubjects[t];
+						subjectLinePerTemporalMatrix.get(subject)[t] = numSubjects[t]; // Store the subject line
 						numSubjects[t]++;
 
 					} else {
@@ -402,34 +403,7 @@ public class Observations {
 					}
 
 				}
-			}
-			
-//			i=0;
-//			System.out.println("Matriz dyn:");
-//			for(int[][] matriz : usefulObservations) {
-//				for(int[] linha : matriz) {
-//					for(int value : linha) {
-//						if(value != -1)
-//							System.out.print(attributes.get(i%numAttributes).get(value) + "  ");
-//						else
-//							System.out.print(-1 + "   ");
-//						i++;
-//					}
-//					i=0;
-//					System.out.println("");
-//				}
-//				System.out.println("");
-//				
-//			}
-			
-//			System.out.println("MAPA:");
-//			for (Map.Entry<String, int[]> entry : subjectLinePerTemporalMatrix.entrySet()) {
-//				int array[] = entry.getValue();
-//				System.out.print("Key " + entry.getKey() + ": ");
-//				for(int valor : array) System.out.print(valor + ", ");
-//				System.out.println("");
-//			}
-	            
+			}            
 
 		} catch (IOException e) {
 			System.err.println("File " + usefulObservationsFileName + " could not be opened.");
@@ -817,17 +791,23 @@ public class Observations {
 	
 	/**
 	 * Given a network configuration (parents and child values), counts all
-	 * observations in some transition that are compatible with it. If
-	 * transition is negative, counts matches in all transitions.
-	 * TAMBEM CONTA PROS ESTATICOS
+	 * observations in some transition that are compatible with it. ´
+	 * This method also considers having static parents.
+	 * 
+	 * @param c 
+	 * 		Configuration to check
+	 * @param transition
+	 * 		The transition to check. -1 if stationary process
+	 * @param observStatic
+	 * 		The static observations object. If null, then calls count(c,transition), not to consider
+	 * 		static parents.
+	 * 
 	 */
 	public int count(LocalConfiguration c, int transition, ObservationsStatic observStatic) {
 		
 		if(observStatic == null) {
 			return count(c, transition);
 		}
-		
-		//TODO Ver se e so mesmo isto
 		
 		// stationary process
 		if (transition < 0) {

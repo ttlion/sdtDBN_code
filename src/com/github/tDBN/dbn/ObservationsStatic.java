@@ -16,10 +16,17 @@ import au.com.bytecode.opencsv.CSVWriter;
 
 import com.github.tDBN.utils.Utils;
 
+/**
+ * 
+ * Class to store the static observations useful for the tDBN learning and manage them.
+ * 
+ * @author Tiago Leao
+ * 
+ */
 public class ObservationsStatic {
 
 	/**
-	 * Three-dimensional matrix of coded observation data which will be used for
+	 * Three-dimensional matrix of coded static observation data which will be used for
 	 * learning a dynamic Bayesian network.
 	 * <ul>
 	 * <li>the 1st index refers to the transition t+MarkovLag;
@@ -30,13 +37,13 @@ public class ObservationsStatic {
 	private int[][][] usefulObservations;
 
 	/**
-	 * Each column of the useful observation data refers to an attribute.
+	 * Each column of the useful observation data refers to a static attribute.
 	 */
 	private List<Attribute> attributes;
 
 	/**
-	 * File that contains the static observations that will be converted to attributes and
-	 * from which one can learn a DBN.
+	 * File that contains the static observations that will be converted to attributes and from which one can learn a DBN.
+	 * 
 	 */
 	private String usefulObservationsFileName;
 
@@ -128,6 +135,7 @@ public class ObservationsStatic {
 				// record subject id
 				String subject = dataLine[0];
 				
+				// Get array with the lines of each temporal matrix where the subject is
 				int subjectLinesPerSlice[] = subjectLinePerTemporalMatrix.get(subject);
 				
 				if( subjectLinesPerSlice == null) {
@@ -137,9 +145,9 @@ public class ObservationsStatic {
 				
 				for (int t = 0; t < numTransInTemporal; t++) {
 
-					int subjectLine = subjectLinesPerSlice[t];
+					int subjectLine = subjectLinesPerSlice[t]; // Get the proper line of the subject in this temporal transition
 					
-					// if subjectLine==-1, do not put in the variables associated to this 
+					// if subjectLine == -1, do not put in the variables associated to this 
 					// timestep (cannot use static att in this timestep because there where no dynamic att used)
 					if(subjectLine == -1) {
 						continue;
@@ -148,7 +156,7 @@ public class ObservationsStatic {
 					for (int j = 0; j < numAttributes; j++) {
 						String value = dataLine[j+1];
 						
-						if( value.length() == 0 || value.equals("?") == true ) { // Vamos ver se consigo pondo aqui -1 nos missings consigo depois calcular as probabilidades bem
+						if( value.length() == 0 || value.equals("?") == true ) { // If there is no static attribute value given (missing value), put -1
 							usefulObservations[t][subjectLine][j] = -1;
 							continue;
 						}
@@ -156,29 +164,11 @@ public class ObservationsStatic {
 						int attributeId = j % numAttributes;
 						Attribute attribute = attributes.get(attributeId);
 						attribute.add(value);
-						usefulObservations[t][subjectLine][j] = attribute.getIndex(value);
+						usefulObservations[t][subjectLine][j] = attribute.getIndex(value); // Store the index of the value of the static attribute
 					}
 					numSubjects[t]++;
 				}
-				
 			}
-			
-//			i=0;
-//			System.out.println("Matriz estatica:");
-//			for(int[][] matriz : usefulObservations) {
-//				for(int[] linha : matriz) {
-//					for(int value : linha) {
-//						if(value != -1)
-//							System.out.print(attributes.get(i).get(value) + "  ");
-//						else
-//							System.out.print(-1 + "   ");
-//						i++;
-//					}
-//					i=0;
-//					System.out.println("");
-//				}
-//				System.out.println("");
-//			}
 
 		} catch (IOException e) {
 			System.err.println("File " + usefulObservationsFileName + " could not be opened.");
@@ -211,29 +201,6 @@ public class ObservationsStatic {
 
 		return missing;
 	}
-	
-	private boolean checkIfInTemporal(String subject, String subjectsInTemporal[]) {
-		for(String subjInTemp : subjectsInTemporal )
-			if(subjInTemp.equals(subject) ) 
-				return true;
-		
-		return false;
-	}
-
-//	public int numObservations(int transition) {
-//
-//		// stationary process
-//		if (transition < 0) {
-//			int numObs = 0;
-//			int T = numTransitions();
-//			for (int t = 0; t < T; t++)
-//				numObs += numSubjects[t];
-//			return numObs;
-//		}
-//
-//		// time-varying process
-//		return numSubjects[transition];
-//	}
 
 	public int numAttributes() {
 		return attributes.size();
@@ -246,30 +213,5 @@ public class ObservationsStatic {
 	public int[][][] getObservationsMatrix() {
 		return usefulObservations;
 	}
-
-//	/**
-//	 * Given a network configuration (parents and child values), counts all
-//	 * observations in some transition that are compatible with it. If
-//	 * transition is negative, counts matches in all transitions.
-//	 */
-//	public int count(LocalConfiguration c, int transition) {
-//
-//		// stationary process
-//		if (transition < 0) {
-//			int allMatches = 0;
-//			int T = numTransitions();
-//			for (int t = 0; t < T; t++)
-//				allMatches += count(c, t);
-//			return allMatches;
-//		}
-//
-//		// time-varying process
-//		int matches = 0;
-//		int N = numObservations(transition);
-//		for (int i = 0; i < N; i++)
-//			if (c.matches(usefulObservations[transition][i]))
-//				matches++;
-//		return matches;
-//	}
 
 }
