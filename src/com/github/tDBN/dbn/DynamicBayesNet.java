@@ -13,6 +13,7 @@ import com.github.tDBN.utils.Edge;
 public class DynamicBayesNet {
 
 	private List<Attribute> attributes;
+	
 	private List<Attribute> staticAttributes;
 
 	private int markovLag;
@@ -173,7 +174,7 @@ public class DynamicBayesNet {
 		// digraph init
 		sb.append("digraph dbn{" + dl);
 
-		sb.append("rankdir=LR;"+ls); // Para se ter imagem na horizontal
+		sb.append("rankdir=LR;"+ls); // To have horizontal image
 
 		if (compactFormat) {
 			for (int i = 0; i < n; i++) {
@@ -209,6 +210,7 @@ public class DynamicBayesNet {
 				sb.append("{" + ls + "rank=min;"+ls);
 			}
 			
+			// just some graphical definitions for the static attributes
 			for (int i = 0; i < n_static; i++) {
 				sb.append(staticAttributes.get(i).getName());
 				sb.append("[shape=polygon, sides=5];" + ls);
@@ -345,10 +347,33 @@ public class DynamicBayesNet {
 		System.out.println(dbn1.toDot(false));
 
 	}
-
+	
+	/**
+	 * Determine the most probable value for a certain attribute in a certain timestep.
+	 * If some parents are needed to be determined they are, using a STACK aproach: a node
+	 * is put in the stack if it needs to be determined. If a node needs a parent to be determined, then
+	 * put the parent into the STACK for the parent to be determined before.
+	 * 
+	 * @param transitionNetID
+	 * 		The transitionNetID (timestep-markovLag)
+	 * @param attributeID
+	 * 		The attribute ID in the list of attributes
+	 * @param stationary
+	 * 		Whether the dbn is stationary or not 
+	 * @param observations
+	 * 		Three dimensional array with dynamic observations
+	 * @param subject
+	 * 		The desired subject
+	 * @param staticObservations
+	 * 		Two dimensional arrat with static observations
+	 * 
+	 * @author Tiago Leao
+	 * 
+	 */
 	public void getMostProbable(int transitionNetID, int attributeID, boolean stationary, int[][][] observations, int subject, int[][] staticObservations) {
 		
-		if(transitionNetID<0) return; // Neste caso nao se conseguira prever nada porque timestep do no e menor do que markovLag
+		// if timestep < markovLag, it will not be possible to determine the desired value
+		if(transitionNetID<0) return;
 
 		int n = attributes.size(), i=0, value;
 		int config[] = new int[(markovLag + 1) * n]; int staticConfig[] = (staticAttributes!=null) ? new int[staticAttributes.size()] : null;
@@ -358,7 +383,7 @@ public class DynamicBayesNet {
 		double sum;
 		boolean allParentsSpecified;
 		
-		// Obter todos os pais
+		// Get all static and dynamic parents of the attribute
 		List<Integer> parents, staticParents;
 		if (stationary == true) {
 			parents = this.getTransitionNet(0).getParents(attributeID);
@@ -368,48 +393,53 @@ public class DynamicBayesNet {
 			staticParents = this.getTransitionNet(transitionNetID).getStaticParents(attributeID);
 		}
 		
+		// Get a stack for the attributes and a stack for the timesteps (these 2 stacks work as 1 stack with tuples (attribute, timestep), 
+		// as every action on one stack is always also performed on the other stack)
 		Stack<Integer> stackAttID = new Stack<Integer>();
 		Stack<Integer> stackTimesteps = new Stack<Integer>();
 		
+		// Put the attribute specified in the input in the stack
 		if(observations[transitionNetID][subject][attributeID + n*markovLag] < 0 ) {
-			//System.out.println("Pondo na STACKaaaaaa: " + attributes.get(attributeID).getName() + "[" + (transitionNetID+markovLag) + "]");
 			stackAttID.push(attributeID);
 			stackTimesteps.push(transitionNetID);
 		}
-
-		for(Integer staticParent : staticParents) { // If some staticParent not specified, inference is not possible
+		
+		// If some static parent is not specified in the observation file, inference is not possible
+		for(Integer staticParent : staticParents) { 
 			
-			if(staticObservations == null) return;
+			if(staticObservations == null) return; // There are static parents but no static observations were given
 			
-			if(staticObservations[subject][staticParent] < 0) {
+			if(staticObservations[subject][staticParent] < 0) { // There are static parents but no static observations were given for the static parent needed
 				return;
 			}
 		}
-
+		
+		// Check all parents of the desired attribute. Put in stack the ones that need to be estimated
 		for(Integer parent : parents) {
 			if(observations[transitionNetID][subject][parent] < 0) {
 				
-				if(transitionNetID + parent/n - markovLag < 0) return; // Nao e possivel prever este pai, entao abortar
+				if(transitionNetID + parent/n - markovLag < 0) return; // If it is not possible to determine the parent, just return
 					
-				//System.out.println("Pondo na STACK: " + attributes.get(parent%n).getName() + "[" + (transitionNetID + parent/n) + "]");
 				stackAttID.push(parent%n);
 				stackTimesteps.push(transitionNetID + parent/n - markovLag);
 			}
 		}
 		
+		// Use the stack approach explained in the beginning of method
 		while(stackAttID.isEmpty() == false) {
 			
+			// Get attribute and transitionNetID, only peeking from stack
 			attributeID = stackAttID.peek();
 			transitionNetID = stackTimesteps.peek();
-			//System.out.println("Olhando na STACK: " + attributes.get(attributeID).getName() + "[" + (transitionNetID+markovLag) + "]");
 			
+			// Check if the attribute was already determined. If yes remove it from stack
 			if ( observations[transitionNetID][subject][n * markovLag + attributeID] >= 0) {
-				//System.out.println("Ja estava preenchido! Tirando da STACK: " + attributes.get(attributeID).getName() + "[" + (transitionNetID+markovLag) + "]");
 				attributeID = stackAttID.pop();
 				transitionNetID = stackTimesteps.pop();
 				continue;
 			}
 			
+			// Get all static and dynamic parents of the attribute
 			if (stationary == true) {
 				parents = this.getTransitionNet(0).getParents(attributeID);
 				staticParents = this.getTransitionNet(0).getStaticParents(attributeID);
@@ -418,92 +448,97 @@ public class DynamicBayesNet {
 				staticParents = this.getTransitionNet(transitionNetID).getStaticParents(attributeID);
 			}
 			
-			for(Integer staticParent : staticParents) { // If some staticParent not specified, inference is not possible
+			// If some static parent is not specified in the observation file, inference is not possible
+			for(Integer staticParent : staticParents) {
 				
-				if(staticObservations == null) return;
+				if(staticObservations == null) return; // There are static parents but no static observations were given
 				
-				if(staticObservations[subject][staticParent] < 0) {
+				if(staticObservations[subject][staticParent] < 0) { // There are static parents but no static observations were given for the static parent needed
 					return;
 				}
 			}
 			
 			allParentsSpecified = true;
+			
+			// Check all parents of the desired attribute. Put in stack the ones that need to be estimated
 			for(Integer parent : parents) {
 				if(observations[transitionNetID][subject][parent] < 0) {
 					
-					if(transitionNetID + parent/n - markovLag < 0) return; // Nao e possivel prever este pai, entao abortar
+					if(transitionNetID + parent/n - markovLag < 0) return; // If it is not possible to determine the parent, just return
 					
-					//System.out.println("Pondo na STACK: " + attributes.get(parent%n).getName() + "[" + (transitionNetID + parent/n) + "]");
 					stackAttID.push(parent%n);
 					stackTimesteps.push(transitionNetID + parent/n - markovLag);
-					allParentsSpecified = false;
+					
+					allParentsSpecified = false; // Mark that at least 1 parent still needs to be estimated
 				}
 			}
 			
-			if (allParentsSpecified == false) {
+			if (allParentsSpecified == false) { 
 				continue;
-			} else {
+				
+			} else { // If all parents are already specified, attribute being analysed can be determined
+				
+				// Remove attribute and transitionNetID from stack
 				attributeID = stackAttID.pop();
 				transitionNetID = stackTimesteps.pop();
 				
-				//System.out.println("Tirando da STACK: " + attributes.get(attributeID).getName() + "[" + (transitionNetID+markovLag) + "]");
-				
-				// Inicializar os valores dos atributos (-1 se nao e pai, 0 se proprio attributo)
+				// Initialize the dynamic attributes values (-1 if not parent, 0 if the child attribute)
 				for(i=0; i<config.length; i++)
-					config[i] = -1; // Por default meter que atributo nao e pai, os pais serao postos num ciclo a seguir
+					config[i] = -1; // By default store an attribute as not being a parent
 				
-				config[n * markovLag + attributeID] = 0; // O proprio no child tem que ter 0 na sua posicao
+				config[n * markovLag + attributeID] = 0; // The child must have 0 in its array position
 				
-				if(staticParents.isEmpty() == false) { // Neste caso ha static parents que tambem tem que ser inicializados!
+				// If needed (if there are static parents), initialize the static attributes values (-1 if not parent)
+				if(staticParents.isEmpty() == false) {
 					for(i=0; i<staticConfig.length; i++)
-						staticConfig[i] = -1;
+						staticConfig[i] = -1; // By default store an attribute as not being a parent
 				}
 				
+				// Get the proper values for each dynamic and static parents
 				for(Integer parent : parents) 
 					config[parent] = observations[transitionNetID][subject][parent];
 				
 				for(Integer staticParent : staticParents)
 					staticConfig[staticParent] = staticObservations[subject][staticParent];
 				
+				
+				// Create configuration of parents
 				if(staticParents.isEmpty() == true) {
-					desiredConfig = new LocalConfiguration(attributes, config);
+					desiredConfig = new LocalConfiguration(attributes, config); // Only dynamic parents
 				} else {
-					desiredConfig = new LocalConfigurationWithStatic(attributes, config, staticAttributes, staticConfig);
+					desiredConfig = new LocalConfigurationWithStatic(attributes, config, staticAttributes, staticConfig); // Dynamic and static parents
 				}
 				
-				// Obter a CPT correta relativa ao atributo em questao na transicao em questao
+				// Get the proper CPT
 				if (stationary == true) {
 					cpt = this.getTransitionNet(0).getCPT(attributeID);
 				} else {
 					cpt = this.getTransitionNet(transitionNetID).getCPT(attributeID);
 				}
 				
-				//System.out.println("Predicting " + attributes.get(attributeID).getName() + "["+ (transitionNetID+markovLag) +"] for subject " + subject + ":" + desiredConfig);
-				
+				// Get the distribution
 				distribution = cpt.get(desiredConfig);
+				
+				// Get the index of the most probable value
 				
 				sum = 0; for(double d : distribution) sum += d;
 				
 				distribution.add(1.0-sum);
 				
-				value = distribution.indexOf(Collections.max(distribution));
+				value = distribution.indexOf(Collections.max(distribution)); // Get the index
 				
 				distribution.remove(distribution.size()-1);
 				
-				observations[transitionNetID][subject][n * markovLag + attributeID]  = value; // Meter valor no timestep que se esta a analisar
+				observations[transitionNetID][subject][n * markovLag + attributeID]  = value; // Put that value in the observations matrix
 				
-				//System.out.println("\tValor escolhido: " + attributes.get(attributeID).get(value));
-				
-				// Propagar valor para as outras matrizes de observacoes
+				// Propagate determined value to other observations matrices, according to markovLag
 				for(i=1; i < (markovLag+1); i++) {
 					if (transitionNetID+i >= observations.length) break;
 					observations[transitionNetID+i][subject][n * (markovLag-i) + attributeID] = value;
 				}
 				
 			}
-			
 		}
-		
 	}
 
 	public BayesNet getTransitionNet(int t) {

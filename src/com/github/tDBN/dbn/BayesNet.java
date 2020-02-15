@@ -72,6 +72,17 @@ public class BayesNet {
 	// interRelations edge tails are shifted in Configuration style (i.e, [0,
 	// markovLag*n[)
 	// intraRelations edge tails are unshifted
+	
+	/**
+	 * Creates Bayesian Network. 
+	 * Given edge heads are already unshifted (i.e., in the interval [0, n[)
+	 * interRelations edge tails are shifted in Configuration style (i.e, [0,
+	 * markovLag*n[)
+	 * intraRelations edge tails are unshifted
+	 * 
+	 * staticAttributes and staticRelations edges may be given if BN has static attributes.
+	 * 
+	 */
 	public BayesNet(List<Attribute> attributes, int markovLag, List<Edge> intraRelations, List<Edge> interRelations,
 			Random r, List<Attribute> staticAttributes, List<Edge> staticRelations) {
 
@@ -132,8 +143,8 @@ public class BayesNet {
 		// obtain nodes by topological order
 		topologicalOrder = Utils.topologicalSort(childNodes);
 		
-		
-		if(staticRelations!=null) { // There are static nodes in the framework, store them correctly
+		// If there are static nodes in the framework, store them correctly
+		if(staticRelations!=null) {
 			staticParentNodes = new ArrayList<List<Integer>>(n);
 			for (int i = 0; i < n; i++)
 				staticParentNodes.add(new ArrayList<Integer>());
@@ -181,7 +192,10 @@ public class BayesNet {
 	public String learnParameters(Observations o, int transition) {
 		return learnParameters(o, transition, null);
 	}
-
+	
+	/**
+	 * Learn parameters from dynamic and static (if provided) observations.
+	 */
 	public String learnParameters(Observations o, int transition, ObservationsStatic observStatic) {
 
 		if (o.getAttributes() != this.attributes) {
@@ -200,7 +214,9 @@ public class BayesNet {
 		for (int i = 0; i < n; i++) {
 
 			hasStaticParents = false;
-
+			
+			// Create LocalConfigurationWithStatic if there are static attributes
+			// Create LocalConfiguration if only dynamic attributes
 			if(observStatic == null) {
 				c = new LocalConfiguration(attributes, markovLag, parentNodes.get(i), i);
 			} else {
@@ -229,7 +245,8 @@ public class BayesNet {
 				// important, configuration is indexed by parents only
 				// child must be reset
 				c.resetChild();
-
+				
+				// Put Configuration in parameters field
 				if(hasStaticParents == true) {
 					parameters.get(i).put(new LocalConfigurationWithStatic( (LocalConfigurationWithStatic) c), probabilities);
 				} else {
@@ -240,11 +257,8 @@ public class BayesNet {
 				parameters.add(new HashMap<Configuration, List<Double>>((int) Math.ceil(parentsRange / 0.75)));
 
 				do {
-					//System.out.println(c);
-					
 					c.setConsiderChild(false);
 					int Nij = o.count(c, transition, observStatic);
-					//System.out.println("Nij:" + Nij);
 					c.setConsiderChild(true);
 
 					int range = c.getChildRange();
@@ -259,7 +273,6 @@ public class BayesNet {
 						// count for all except one of possible child values
 						for (int j = range - 1; j-- > 0;) {
 							int Nijk = o.count(c, transition, observStatic);
-							//System.out.println("\tNijk:" + Nijk);
 							probabilities.add(1.0 * Nijk / Nij);
 							c.nextChild();
 						}
@@ -268,13 +281,12 @@ public class BayesNet {
 					// child must be reset
 					c.resetChild();
 					
+					// Put Configuration in parameters field
 					if(hasStaticParents == true) {
 						parameters.get(i).put(new LocalConfigurationWithStatic( (LocalConfigurationWithStatic) c), probabilities);
 					} else {
 						parameters.get(i).put(new LocalConfiguration(c), probabilities);
 					}
-					
-					//System.out.println(probabilities);
 					
 				} while (c.nextParents());
 			}
@@ -464,11 +476,12 @@ public class BayesNet {
 				sb.append(ls);
 			}
 			
+			// Write static attributes if they exist
 			for (int head = 0; head < n; head++)
 				for (Integer staticTail : staticParentNodes.get(head))
 					sb.append(staticAttributes.get(staticTail).getName() + " -> " + "X" + head + "_" + presentSlice + ls);
-			sb.append(ls);
 			
+			sb.append(ls);
 		}
 
 		return sb.toString();
@@ -497,10 +510,11 @@ public class BayesNet {
 			sb.append(ls);
 		}
 
-		// Print static connections
+		// Print static connections if they exist
 		for (int head = 0; head < n; head++)
 			for (Integer staticTail : staticParentNodes.get(head))
 				sb.append(staticAttributes.get(staticTail).getName() + " -> " + attributes.get(head).getName() + "[" + presentSlice + "]" + ls);
+		
 		sb.append(ls);
 
 		if (printParameters) {
