@@ -191,6 +191,9 @@ public class DynamicBayesNet {
 			for (int t = 0; t < T + markovLag; t++) {
 				// slice t attributes
 				sb.append("{" + ls + "rank=same;"+ls);
+				
+				sb.append("rank" + t +  " [style=invisible];" + ls);
+				
 				for (int i = 0; i < n; i++) {
 					sb.append("X" + i + "_" + t);
 					String attributeName = attributes.get(i).getName();
@@ -217,9 +220,29 @@ public class DynamicBayesNet {
 			}
 			sb.append("};"+ ls);
 			
+			for (int t = 0; t < T + markovLag - 1; t++) {
+				sb.append("rank" + t + " -> rank" + (t+1) + " [color=white];" + ls);
+			}
+			
+			for (int t = 0; t < T + markovLag; t++) {
+				
+				sb.append("rank" + t);
+				
+				for (int i = 0; i < n; i++) {
+					sb.append(" -> X" + i + "_" + t);
+				}
+				
+				sb.append(" [style=invis]" + ls);
+				
+			}
+			
+			
 		}
 		sb.append(ls);
-
+		
+		
+		
+		
 		// transition and intra-slice (t>0) edges
 		for (int t = 0; t < T; t++)
 			sb.append(transitionNets.get(t).toDot(t, compactFormat));
