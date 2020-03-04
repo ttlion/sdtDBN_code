@@ -90,11 +90,11 @@ public class Inference {
 		// New parameters introduced by Tiago Leao come next:
 		
 		Option newObservation = OptionBuilder.withArgName("file").hasArg()
-				.withDescription("File with the observations where inference should be done")
+				.withDescription("File with the observations where inference should be done.")
 				.withLongOpt("obsFile").create("obs");
 
 		Option inferenceFile = OptionBuilder.withArgName("file").hasArg()
-				.withDescription("File with variables to perform inference on")
+				.withDescription("File with variables to perform inference on.")
 				.withLongOpt("inferenceFile").create("inf");
 		
 		Option inferenceFormat = OptionBuilder.withArgName("file").hasArg()
@@ -102,7 +102,7 @@ public class Inference {
 				.withLongOpt("inferenceFormat").create("infFmt");
 		
 		Option outputInferenceFile = OptionBuilder.withArgName("file").hasArg()
-				.withDescription("File to write the inference performed")
+				.withDescription("Writes inference output to <file>. If not supplied, inference output is written to terminal.")
 				.withLongOpt("outputInferenceFile").create("outInf");
 		
 		Option outputTrajectoryFile = OptionBuilder.withArgName("file").hasArg()
@@ -110,7 +110,7 @@ public class Inference {
 				.withLongOpt("outputTrajectoryFile").create("tf");
 
 		Option trajMaxTimestep = OptionBuilder.withArgName("int").hasArg()
-				.withDescription("Timestep until which trajectory is to be determined")
+				.withDescription("Timestep until which trajectory is to be determined.")
 				.withLongOpt("trajectory").create("t");
 		
 		Option inputStatic = OptionBuilder.withArgName("file").hasArg()
@@ -118,11 +118,11 @@ public class Inference {
 				.create("is");
 		
 		Option numStaticParents = OptionBuilder.withArgName("int").hasArg()
-				.withDescription("Maximum number of static parents of a certain node (default = 2)").withLongOpt("numStaticParents")
+				.withDescription("Maximum number of static parents of a certain node (default = 2).").withLongOpt("numStaticParents")
 				.create("b");
 		
 		Option newStaticObservation = OptionBuilder.withArgName("file").hasArg()
-				.withDescription("File with the static observations to make inference")
+				.withDescription("File with the static observations to make inference.")
 				.withLongOpt("obsStaticFile").create("obsStatic");
 				
 		options.addOption(inputFile);
@@ -287,7 +287,7 @@ public class Inference {
 			
 		} catch (ParseException e) {
 			HelpFormatter formatter = new HelpFormatter();
-			formatter.printHelp("tDBN", options);
+			formatter.printHelp("sdtDBN", options);
 		}
 
 	}
