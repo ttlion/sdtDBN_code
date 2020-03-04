@@ -666,18 +666,12 @@ public class ObservationsToInference {
 				}
 				sb.append(String.format(",%.3f\n", 1.0-count));
 				
-				System.out.println("---------");
-				System.out.println("Estimating: " + attributes.get(attributeID).getName() + "[" +  (transitionNetID+markovLag) + "]");
-				System.out.println(distribution);
-				
 				if(infFormat == 1) { // Select most probable
 					maxProb = Collections.max(distribution);
 					indxSelected = distribution.indexOf(maxProb);
 					
 					if(maxProb < (1.0-count))
 						indxSelected = attToPrintDim-1;
-					
-					System.out.println("Indx escolhido pq max: " + indxSelected);
 					
 				} else {
 					// Randomly estimate a value, using the probabilities of distribution
@@ -698,14 +692,7 @@ public class ObservationsToInference {
 					if(indxSelected == -1) 
 						indxSelected = currIndx;
 					
-					System.out.println("Random nb: " + rand + "|| Indx escolhido: " + indxSelected);
-					
 				}
-				
-				System.out.println("---------");
-				System.out.println("---------");
-				System.out.println("---------");
-				System.out.println("---------");
 				
 				valueToStore = attributes.get(attributeID).get(indxSelected);
 				

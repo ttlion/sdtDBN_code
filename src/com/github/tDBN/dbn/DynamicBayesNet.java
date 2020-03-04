@@ -550,10 +550,6 @@ public class DynamicBayesNet {
 				// Get the distribution
 				distribution = cpt.get(desiredConfig);
 				
-				System.out.println("---------");
-				System.out.println("Estimating: " + attributes.get(attributeID).getName() + "[" +  (transitionNetID+markovLag) + "]");
-				System.out.println(distribution);
-				
 				if(infMode == 1) { // Estimate with most probable value
 					
 					// Get the index of the most probable value
@@ -565,8 +561,6 @@ public class DynamicBayesNet {
 					indxSelected = distribution.indexOf(Collections.max(distribution)); // Get the index
 					
 					distribution.remove(distribution.size()-1);
-					
-					System.out.println("Indx escolhido pq max: " + indxSelected);
 					
 				} else {
 					// Randomly estimate a value, using the probabilities of distribution
@@ -587,11 +581,7 @@ public class DynamicBayesNet {
 					if(indxSelected == -1) 
 						indxSelected = currIndx;
 					
-					System.out.println("Random nb: " + rand + "|| Indx escolhido: " + indxSelected);
-					
 				}
-				
-				System.out.println("---------");
 				
 				observations[transitionNetID][subject][n * markovLag + attributeID]  = indxSelected; // Put that value in the observations matrix
 				
