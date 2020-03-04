@@ -6,6 +6,7 @@ import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Random;
 import java.util.Stack;
 
 import com.github.tDBN.utils.Edge;
@@ -390,21 +391,28 @@ public class DynamicBayesNet {
 	 * @param staticObservations
 	 * 		Two dimensional arrat with static observations
 	 * 
+	 * @param infMode
+	 * 		If 1, estimates values with most probable, otherwise estimates with random sampling according to probability distribution
+	 * 
 	 * @author Tiago Leao
 	 * 
 	 */
-	public void getMostProbable(int transitionNetID, int attributeID, boolean stationary, int[][][] observations, int subject, int[][] staticObservations) {
+	public void getMostProbable(int transitionNetID, int attributeID, boolean stationary, int[][][] observations, int subject, int[][] staticObservations, int infMode) {
 		
 		// if timestep < markovLag, it will not be possible to determine the desired value
 		if(transitionNetID<0) return;
 
-		int n = attributes.size(), i=0, value;
+		int n = attributes.size(), i=0;
 		int config[] = new int[(markovLag + 1) * n]; int staticConfig[] = (staticAttributes!=null) ? new int[staticAttributes.size()] : null;
 		Configuration desiredConfig;
 		List<Double> distribution;
 		Map<Configuration, List<Double>> cpt;
 		double sum;
 		boolean allParentsSpecified;
+		
+		Random randGen = new Random(); // for generating random numbers
+		double rand, cummulative;
+		int indxSelected, currIndx;
 		
 		// Get all static and dynamic parents of the attribute
 		List<Integer> parents, staticParents;
@@ -542,22 +550,55 @@ public class DynamicBayesNet {
 				// Get the distribution
 				distribution = cpt.get(desiredConfig);
 				
-				// Get the index of the most probable value
+				System.out.println("---------");
+				System.out.println("Estimating: " + attributes.get(attributeID).getName() + "[" +  (transitionNetID+markovLag) + "]");
+				System.out.println(distribution);
 				
-				sum = 0; for(double d : distribution) sum += d;
+				if(infMode == 1) { // Estimate with most probable value
+					
+					// Get the index of the most probable value
+					
+					sum = 0; for(double d : distribution) sum += d;
+					
+					distribution.add(1.0-sum);
+					
+					indxSelected = distribution.indexOf(Collections.max(distribution)); // Get the index
+					
+					distribution.remove(distribution.size()-1);
+					
+					System.out.println("Indx escolhido pq max: " + indxSelected);
+					
+				} else {
+					// Randomly estimate a value, using the probabilities of distribution
+					rand = randGen.nextDouble();
+					cummulative = 0.0;
+					indxSelected = -1;
+					currIndx = 0;
+					
+					for(double d : distribution) {
+						cummulative += d;
+						if(rand < cummulative) {
+							indxSelected = currIndx;
+							break;
+						}
+						currIndx++;
+					}
+					
+					if(indxSelected == -1) 
+						indxSelected = currIndx;
+					
+					System.out.println("Random nb: " + rand + "|| Indx escolhido: " + indxSelected);
+					
+				}
 				
-				distribution.add(1.0-sum);
+				System.out.println("---------");
 				
-				value = distribution.indexOf(Collections.max(distribution)); // Get the index
-				
-				distribution.remove(distribution.size()-1);
-				
-				observations[transitionNetID][subject][n * markovLag + attributeID]  = value; // Put that value in the observations matrix
+				observations[transitionNetID][subject][n * markovLag + attributeID]  = indxSelected; // Put that value in the observations matrix
 				
 				// Propagate determined value to other observations matrices, according to markovLag
 				for(i=1; i < (markovLag+1); i++) {
 					if (transitionNetID+i >= observations.length) break;
-					observations[transitionNetID+i][subject][n * (markovLag-i) + attributeID] = value;
+					observations[transitionNetID+i][subject][n * (markovLag-i) + attributeID] = indxSelected;
 				}
 				
 			}

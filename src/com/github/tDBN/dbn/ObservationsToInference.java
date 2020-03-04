@@ -10,6 +10,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.ListIterator;
 import java.util.Map;
+import java.util.Random;
 import java.util.Map.Entry;
 
 import com.github.tDBN.utils.Utils;
@@ -131,7 +132,7 @@ public class ObservationsToInference {
 	 * </ul>
 	 * 
 	 */
-	private String mostProbable[][];
+	private String predictions[][];
 	
 	/**
 	 * Store line of each subject. As missing values are also stored, this line is the same in all matrices.
@@ -476,7 +477,7 @@ public class ObservationsToInference {
 			if(newMatrixDimension!=-1) // Check if necessary to increase observations matrix size
 				usefulObservations = increaseObservationMatrix(usefulObservations, newMatrixDimension);
 			
-			mostProbable = new String[subjects.length][inferenceAtts.length];
+			predictions = new String[subjects.length][inferenceAtts.length];
 			
 		} catch (IOException e) {
 			System.err.println("File " + attFileName + " could not be opened.");
@@ -497,12 +498,15 @@ public class ObservationsToInference {
 	 * 		a file path where to write the inference perfomed. If null, output written to terminal
 	 * @param presentDistr 
 	 * 		If true outputs all the distribution, if false only outputs most probable value for each attribute
+	 * 
+	 * @param infFormat
+	 * 		If 1 estimates with most probable, otherwise estimates with random sampling according to distribution
 	 */
-	public void makeInference(boolean stationary, DynamicBayesNet dbn, String fileToWrite, boolean presentDistr) {
+	public void makeInference(boolean stationary, DynamicBayesNet dbn, String fileToWrite, int infFormat) {
 		
 		StringBuilder sb = new StringBuilder();
 		
-		int attributeID = 0, i=0, transitionNetID = 0, attToPrintDim = 0, currLineIndx=0, maxProbIndx;
+		int attributeID = 0, i=0, transitionNetID = 0, attToPrintDim = 0, currLineIndx=0;
 		
 		// Allocate matrices for each static and dynamic configuration of each subject
 		int configs[][] = new int[usefulObservations[0].length][(markovLag + 1) * attributes.size()];
@@ -518,6 +522,10 @@ public class ObservationsToInference {
 		int canMakeInference[] = new int[usefulObservations[0].length];
 		Attribute attToPrint;
 		String valueToStore = null;
+		
+		Random randGen = new Random(); // for generating random numbers
+		double rand, cummulative;
+		int indxSelected, currIndx;
 		
 		currLineIndx=-1;
 		for(int[] infLine : inferenceAtts) { // For each attribute inference is desired
@@ -598,7 +606,7 @@ public class ObservationsToInference {
 						
 						// If dynamic parent not in observations file, must be estimated according to tDBN learned
 						if(observation[parent]<0) {
-							dbn.getMostProbable(transitionNetID + parent/(attributes.size()) - markovLag, parent%(attributes.size()), stationary, usefulObservations, i, staticUsefulObservations);
+							dbn.getMostProbable(transitionNetID + parent/(attributes.size()) - markovLag, parent%(attributes.size()), stationary, usefulObservations, i, staticUsefulObservations, infFormat);
 						}
 						
 						configs[i][parent] = observation[parent];
@@ -644,7 +652,7 @@ public class ObservationsToInference {
 					
 					sb.append("\n");
 					
-					mostProbable[i][currLineIndx] = null;
+					predictions[i][currLineIndx] = null;
 					
 					continue;
 				}
@@ -658,22 +666,57 @@ public class ObservationsToInference {
 				}
 				sb.append(String.format(",%.3f\n", 1.0-count));
 				
-				maxProb = Collections.max(distribution);
-				maxProbIndx = distribution.indexOf(maxProb);
+				System.out.println("---------");
+				System.out.println("Estimating: " + attributes.get(attributeID).getName() + "[" +  (transitionNetID+markovLag) + "]");
+				System.out.println(distribution);
 				
-				if(maxProb < (1.0-count))
-					maxProbIndx = attToPrintDim-1;
+				if(infFormat == 1) { // Select most probable
+					maxProb = Collections.max(distribution);
+					indxSelected = distribution.indexOf(maxProb);
+					
+					if(maxProb < (1.0-count))
+						indxSelected = attToPrintDim-1;
+					
+					System.out.println("Indx escolhido pq max: " + indxSelected);
+					
+				} else {
+					// Randomly estimate a value, using the probabilities of distribution
+					rand = randGen.nextDouble();
+					cummulative = 0.0;
+					indxSelected = -1;
+					currIndx = 0;
+					
+					for(double d : distribution) {
+						cummulative += d;
+						if(rand < cummulative) {
+							indxSelected = currIndx;
+							break;
+						}
+						currIndx++;
+					}
+					
+					if(indxSelected == -1) 
+						indxSelected = currIndx;
+					
+					System.out.println("Random nb: " + rand + "|| Indx escolhido: " + indxSelected);
+					
+				}
 				
-				valueToStore = attributes.get(attributeID).get(maxProbIndx);
+				System.out.println("---------");
+				System.out.println("---------");
+				System.out.println("---------");
+				System.out.println("---------");
 				
-				mostProbable[i][currLineIndx] = valueToStore;
+				valueToStore = attributes.get(attributeID).get(indxSelected);
+				
+				predictions[i][currLineIndx] = valueToStore;
 			}
 			sb.append("\n");
 		}
 		
-		// If user specified to only print the most probable value instead of all distribution, create proper information to be provided to user
-		if (presentDistr == false )
-			sb = MostProbableValuesFromInference();
+		// If user specified to only print the most probable or random sampled value instead of all distribution, create proper information to be provided to user
+		if (infFormat != 2 )
+			sb = PredictedValuesFromInference();
 		
 		// Write information to user
 		if(fileToWrite != null) {
@@ -689,12 +732,12 @@ public class ObservationsToInference {
 	}
 	
 	/**
-	 * Write in csv tabular form the most probable value for each attribute inference was made for each subject
+	 * Write in csv tabular form the predicted value for each attribute inference was made for each subject
 	 * 
 	 */
-	private StringBuilder MostProbableValuesFromInference() {
+	private StringBuilder PredictedValuesFromInference() {
 		
-		if (mostProbable==null || inferenceAtts==null) { // Error condition
+		if (predictions==null || inferenceAtts==null) { // Error condition
 			System.out.println("Must call before the proper methods to create and fill the most probable values for the desired attributes!");
 			return null;
 		}
@@ -708,7 +751,7 @@ public class ObservationsToInference {
 		
 		// Write the determined value for attribute for each subject
 		int i=0;
-		for(String[] line : mostProbable) {
+		for(String[] line : predictions) {
 			sb.append(subjects[i++]);
 			for(String value : line){
 				sb.append("," + value);
@@ -771,9 +814,11 @@ public class ObservationsToInference {
 	 * @param stationary
 	 * 		whether the dbn is stationary or not
 	 * 
+	 * @param infFormat
+	 * 		If 1 estimates with most probable, otherwise estimates with random sampling according to distribution
 	 * 
 	 */
-	public void getMostProbableTrajectory(int timestepMax, DynamicBayesNet dbn, boolean stationary) {
+	public void getMostProbableTrajectory(int timestepMax, DynamicBayesNet dbn, boolean stationary, int infFormat) {
 		
 		int transitionNetID, subject, att;
 		
@@ -798,7 +843,7 @@ public class ObservationsToInference {
 			for(subject=0; subject < subjects.length; subject++)
 				for(att=0; att < (markovLag + 1) * attributes.size(); att++)
 					if(matrixWithAllPredictions[transitionNetID][subject][att] < 0) // Case where value not given in original data
-						dbn.getMostProbable(transitionNetID + att/(attributes.size()) - markovLag, att%(attributes.size()), stationary, matrixWithAllPredictions, subject, staticUsefulObservations);
+						dbn.getMostProbable(transitionNetID + att/(attributes.size()) - markovLag, att%(attributes.size()), stationary, matrixWithAllPredictions, subject, staticUsefulObservations, infFormat);
 		
 		// If all values already predicted, return
 		if(maxNumTransNet <= usefulObservations.length) return;
@@ -807,7 +852,7 @@ public class ObservationsToInference {
 		for(transitionNetID=usefulObservations.length; transitionNetID < maxNumTransNet; transitionNetID++)
 			for(subject=0; subject < subjects.length; subject++)
 				for(att=0; att < (markovLag + 1) * attributes.size(); att++)
-					dbn.getMostProbable(transitionNetID + att/(attributes.size()) - markovLag, att%(attributes.size()), stationary, matrixWithAllPredictions, subject, staticUsefulObservations);
+					dbn.getMostProbable(transitionNetID + att/(attributes.size()) - markovLag, att%(attributes.size()), stationary, matrixWithAllPredictions, subject, staticUsefulObservations, infFormat);
 		
 		return;
 	}

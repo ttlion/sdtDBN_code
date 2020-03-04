@@ -98,7 +98,7 @@ public class Inference {
 				.withLongOpt("inferenceFile").create("inf");
 		
 		Option inferenceFormat = OptionBuilder.withArgName("file").hasArg()
-				.withDescription("Format to present inference. Can be mostProb or distrib, to give only the most probable value or the full distribution, for each attribute specified. Default is mostProb.")
+				.withDescription("Format to present inference. Can be distrSampl, to give only a value sampled according to the distribution; mostProb, to give only the most probable value; or distrib, to give the full distribution, for each attribute specified (where distrSampl is applied to intermmediate nodes). Default is distrSampl.")
 				.withLongOpt("inferenceFormat").create("infFmt");
 		
 		Option outputInferenceFile = OptionBuilder.withArgName("file").hasArg()
@@ -251,6 +251,15 @@ public class Inference {
 					observToInference = new ObservationsToInference(cmd.getOptionValue("obs"), markovLag, o.getAttributes(), null, null);
 				}
 				
+				int inferenceFormatAux = 0;
+				if(definedinferenceFormat == true) {
+					if(cmd.getOptionValue("inferenceFormat").equalsIgnoreCase("mostProb")) {
+						inferenceFormatAux = 1;
+					} else if(cmd.getOptionValue("inferenceFormat").equalsIgnoreCase("distrib")){
+						inferenceFormatAux = 2;
+					}	
+				}
+				
 				if (getMostProbTraj == true) { // To perform the option -t
 					
 					int timestepMax = Integer.parseInt(cmd.getOptionValue("t", "-1"));
@@ -259,22 +268,18 @@ public class Inference {
 						System.exit(1);
 					}
 					
-					observToInference.getMostProbableTrajectory(timestepMax, dbn, stationary);
+					observToInference.getMostProbableTrajectory(timestepMax, dbn, stationary, inferenceFormatAux);
 					observToInference.printMostProbableTrajectory(definedTrajOutput, cmd.getOptionValue("tf"));
 				}
 				
-				boolean presentDistr = false;
 				
 				if (makeInferenceAtt == true) { // To perform inference on specific attributes specified by user
 					observToInference.parseAttributes(cmd.getOptionValue("inf"));
 					
-					if(definedinferenceFormat == true && cmd.getOptionValue("inferenceFormat").equalsIgnoreCase("distrib") )
-						presentDistr = true;
-					
 					if(definedOutputInferenceFile== true) {
-						observToInference.makeInference(stationary, dbn, cmd.getOptionValue("outputInferenceFile"), presentDistr);
+						observToInference.makeInference(stationary, dbn, cmd.getOptionValue("outputInferenceFile"), inferenceFormatAux);
 					} else {
-						observToInference.makeInference(stationary, dbn, null, presentDistr);
+						observToInference.makeInference(stationary, dbn, null, inferenceFormatAux);
 					}
 						
 				}
