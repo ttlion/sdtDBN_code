@@ -9,6 +9,7 @@ import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.ListIterator;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Random;
 import java.util.Map.Entry;
@@ -661,10 +662,10 @@ public class ObservationsToInference {
 				
 				count = 0.0; 
 				for(double d : distribution) {
-					sb.append(String.format(",%.3f", d));
+					sb.append(String.format(Locale.ROOT, ",%.3f", d));
 					count += d;
 				}
-				sb.append(String.format(",%.3f\n", 1.0-count));
+				sb.append(String.format(Locale.ROOT, ",%.3f\n", 1.0-count));
 				
 				if(infFormat == 1) { // Select most probable
 					maxProb = Collections.max(distribution);
