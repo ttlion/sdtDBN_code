@@ -132,11 +132,11 @@ public class Inference {
 				.withLongOpt("obsStaticFile").create("obsStatic");
 
 		Option fromObjectFile = OptionBuilder.withArgName("file").hasArg()
-				.withDescription("File with the serialized object with the sdtDBN")
+				.withDescription("File with the serialized object of the sdtDBN.")
 				.withLongOpt("fromObjFile").create("fromfile");
 		
 		Option toObjectFile = OptionBuilder.withArgName("file").hasArg()
-				.withDescription("File in which the serialized object with the sdtDBN should be stored")
+				.withDescription("File in which the serialized object with the sdtDBN should be stored.")
 				.withLongOpt("toObjFile").create("tofile");
 				
 		options.addOption(inputFile);
