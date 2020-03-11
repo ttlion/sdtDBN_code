@@ -133,11 +133,11 @@ public class Inference {
 
 		Option fromObjectFile = OptionBuilder.withArgName("file").hasArg()
 				.withDescription("File with the serialized object of the sdtDBN.")
-				.withLongOpt("fromObjFile").create("fromfile");
+				.withLongOpt("fromObjFile").create("fromFile");
 		
 		Option toObjectFile = OptionBuilder.withArgName("file").hasArg()
 				.withDescription("File in which the serialized object with the sdtDBN should be stored.")
-				.withLongOpt("toObjFile").create("tofile");
+				.withLongOpt("toObjFile").create("toFile");
 				
 		options.addOption(inputFile);
 		options.addOption(numParents);
