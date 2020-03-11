@@ -1,5 +1,6 @@
 package com.github.tDBN.dbn;
 
+import java.io.Serializable;
 import java.text.DecimalFormat;
 import java.text.DecimalFormatSymbols;
 import java.util.ArrayList;
@@ -15,7 +16,9 @@ import java.util.Random;
 import com.github.tDBN.utils.Edge;
 import com.github.tDBN.utils.Utils;
 
-public class BayesNet {
+public class BayesNet implements Serializable {
+	
+	static final long serialVersionUID = 42L;
 
 	private List<Attribute> attributes;
 	

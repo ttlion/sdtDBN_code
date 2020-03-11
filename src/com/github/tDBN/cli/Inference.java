@@ -1,6 +1,12 @@
 package com.github.tDBN.cli;
 
+import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
 
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
@@ -37,11 +43,11 @@ public class Inference {
 		// create Options object
 		Options options = new Options();
 
-		Option inputFile = OptionBuilder.withArgName("file").hasArg().isRequired()
+		Option inputFile = OptionBuilder.withArgName("file").hasArg()
 				.withDescription("Input CSV file to be used for network learning.").withLongOpt("inputFile")
 				.create("i");
 
-		Option numParents = OptionBuilder.withArgName("int").hasArg().isRequired()
+		Option numParents = OptionBuilder.withArgName("int").hasArg()
 				.withDescription("Maximum number of parents from preceding time-slice(s).").withLongOpt("numParents")
 				.create("p");
 
@@ -124,6 +130,14 @@ public class Inference {
 		Option newStaticObservation = OptionBuilder.withArgName("file").hasArg()
 				.withDescription("File with the static observations to make inference.")
 				.withLongOpt("obsStaticFile").create("obsStatic");
+
+		Option fromObjectFile = OptionBuilder.withArgName("file").hasArg()
+				.withDescription("File with the serialized object with the sdtDBN")
+				.withLongOpt("fromObjFile").create("fromfile");
+		
+		Option toObjectFile = OptionBuilder.withArgName("file").hasArg()
+				.withDescription("File in which the serialized object with the sdtDBN should be stored")
+				.withLongOpt("toObjFile").create("tofile");
 				
 		options.addOption(inputFile);
 		options.addOption(numParents);
@@ -147,6 +161,9 @@ public class Inference {
 		options.addOption(numStaticParents);
 		options.addOption(newStaticObservation);
 
+		options.addOption(fromObjectFile);
+		options.addOption(toObjectFile);
+
 		CommandLineParser parser = new GnuParser();
 		try {
 
@@ -166,47 +183,90 @@ public class Inference {
 			boolean hasStatic = cmd.hasOption("inputStaticFile");
 			boolean hasStaticObservFile = cmd.hasOption("obsStatic");
 
-			// TODO: check sanity
-			int markovLag = Integer.parseInt(cmd.getOptionValue("m", "1"));
-			int root = Integer.parseInt(cmd.getOptionValue("r", "-1"));
-
-			Observations o = new Observations(cmd.getOptionValue("i"), markovLag);
-
+			boolean learnDBNfromObjFile  = cmd.hasOption("fromObjFile");
+			boolean storeObjInFile = cmd.hasOption("toObjFile");
+			
+			if( learnDBNfromObjFile == false && ( cmd.hasOption("inputFile") == false || cmd.hasOption("numParents") == false ) ) {
+				System.out.println("No file with DBN object was given and either inputFile or numParents (or both) not specified!!");
+				System.out.println("Check the following usage:\n");
+				HelpFormatter formatter = new HelpFormatter();
+				formatter.printHelp("sdtDBN", options);
+				System.exit(1);
+			}
+			
+			
+			DynamicBayesNet dbn;
+			int markovLag;
+			Observations o = null;
 			ObservationsStatic staticObservations = null;
 			
-			// Fill staticObservations only if they are provided
-			if(hasStatic == true)
-				staticObservations = new ObservationsStatic(cmd.getOptionValue("is"), o.getSubjLinePerMtrx(), o.numTransitions(), o.getNumbSubjects());			
+			if(learnDBNfromObjFile == false) {
 
-			Scores s = new Scores(o, Integer.parseInt(cmd.getOptionValue("p")), stationary, verbose, staticObservations, Integer.parseInt(cmd.getOptionValue("b", "2")));
-			if (cmd.hasOption("s") && cmd.getOptionValue("s").equalsIgnoreCase("ll")) {
-				if (verbose)
-					System.out.println("Evaluating network with LL score.");
-				s.evaluate(new LLScoringFunction());
-			} else {
-				if (verbose)
-					System.out.println("Evaluating network with MDL score.");
-				s.evaluate(new MDLScoringFunction());
+				// TODO: check sanity
+				markovLag = Integer.parseInt(cmd.getOptionValue("m", "1"));
+				int root = Integer.parseInt(cmd.getOptionValue("r", "-1"));
+	
+				o = new Observations(cmd.getOptionValue("i"), markovLag);
+				
+				// Fill staticObservations only if they are provided
+				if(hasStatic == true)
+					staticObservations = new ObservationsStatic(cmd.getOptionValue("is"), o.getSubjLinePerMtrx(), o.numTransitions(), o.getNumbSubjects());			
+	
+				Scores s = new Scores(o, Integer.parseInt(cmd.getOptionValue("p")), stationary, verbose, staticObservations, Integer.parseInt(cmd.getOptionValue("b", "2")));
+				if (cmd.hasOption("s") && cmd.getOptionValue("s").equalsIgnoreCase("ll")) {
+					if (verbose)
+						System.out.println("Evaluating network with LL score.");
+					s.evaluate(new LLScoringFunction());
+				} else {
+					if (verbose)
+						System.out.println("Evaluating network with MDL score.");
+					s.evaluate(new MDLScoringFunction());
+				}
+	
+				// if (verbose)
+				// System.out.println(s);
+	
+				if (verbose) {
+					if (cmd.hasOption("r"))
+						System.out.println("Root node specified: " + root);
+					if (spanning)
+						System.out.println("Finding a maximum spanning tree.");
+					else
+						System.out.println("Finding a maximum branching.");
+				}
+	
+				dbn = s.toDBN(root, spanning);
+	
+				if (printParameters || storeObjInFile)
+					dbn.learnParameters(o, stationary, staticObservations);
+			
+			} else { // Case where DBN must be learned from a given file with the object
+				FileInputStream fi = new FileInputStream(new File(cmd.getOptionValue("fromObjFile")));
+				ObjectInputStream oi = new ObjectInputStream(fi);
+				
+				// Read objects
+				dbn = (DynamicBayesNet) oi.readObject();
+
+				oi.close();
+				fi.close();
+				
+				// Get parameters from the dbn learned
+				markovLag = dbn.getMarkovLag();
+				hasStatic = dbn.hasStaticAtts();
+				stationary = dbn.isStationary();
+				printParameters = true;
 			}
+			
+			if(storeObjInFile == true) {
+				FileOutputStream file = new FileOutputStream(new File(cmd.getOptionValue("toObjFile")));
+				ObjectOutputStream object = new ObjectOutputStream(file);
 
-			// if (verbose)
-			// System.out.println(s);
+				// Write objects to file
+				object.writeObject(dbn);
 
-			DynamicBayesNet dbn;
-
-			if (verbose) {
-				if (cmd.hasOption("r"))
-					System.out.println("Root node specified: " + root);
-				if (spanning)
-					System.out.println("Finding a maximum spanning tree.");
-				else
-					System.out.println("Finding a maximum branching.");
+				object.close();
+				file.close();
 			}
-
-			dbn = s.toDBN(root, spanning);
-
-			if (printParameters)
-				dbn.learnParameters(o, stationary, staticObservations);
 
 			String output;
 			if (cmd.hasOption("d")) {
@@ -241,14 +301,16 @@ public class Inference {
 					System.exit(1);
 				}
 				
-				if(printParameters == false) // Parameters were not learned before so they should be now to perform inference
+				// Parameters were not learned before so they should be now to perform inference
+				// If sdtDBN was given in file, it comes with parameters for sure
+				if(printParameters == false && storeObjInFile == false)
 					dbn.learnParameters(o, stationary, staticObservations);
 				
 				ObservationsToInference observToInference; // Check whether the observations to inference should be filled only with dynamic observations or also with sattic observations
-				if(staticObservations != null && hasStaticObservFile){
-					observToInference = new ObservationsToInference(cmd.getOptionValue("obs"), markovLag, o.getAttributes(), cmd.getOptionValue("obsStatic"), staticObservations.getAttributes());
+				if(hasStatic == true && hasStaticObservFile){
+					observToInference = new ObservationsToInference(cmd.getOptionValue("obs"), markovLag, dbn.getDynAttributes(), cmd.getOptionValue("obsStatic"), dbn.getStaticAttributes());
 				} else {
-					observToInference = new ObservationsToInference(cmd.getOptionValue("obs"), markovLag, o.getAttributes(), null, null);
+					observToInference = new ObservationsToInference(cmd.getOptionValue("obs"), markovLag, dbn.getDynAttributes(), null, null);
 				}
 				
 				int inferenceFormatAux = 0;
@@ -285,6 +347,14 @@ public class Inference {
 				}
 			}
 			
+		} catch (FileNotFoundException e) {
+			System.out.println("File not found");
+			e.printStackTrace();
+		} catch (IOException e) {
+			System.out.println("Error initializing stream");
+			e.printStackTrace();
+		} catch (ClassNotFoundException e) {
+			e.printStackTrace();
 		} catch (ParseException e) {
 			HelpFormatter formatter = new HelpFormatter();
 			formatter.printHelp("sdtDBN", options);

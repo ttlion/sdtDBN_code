@@ -1,5 +1,6 @@
 package com.github.tDBN.dbn;
 
+import java.io.Serializable;
 import java.util.Arrays;
 import java.util.List;
 
@@ -10,7 +11,9 @@ import java.util.List;
  * @author zlm
  * 
  */
-public class Configuration {
+public class Configuration implements Serializable {
+	
+	static final long serialVersionUID = 42L;
 
 	protected List<Attribute> attributes;
 

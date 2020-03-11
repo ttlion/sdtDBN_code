@@ -1,5 +1,6 @@
 package com.github.tDBN.dbn;
 
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -11,7 +12,9 @@ import java.util.Stack;
 
 import com.github.tDBN.utils.Edge;
 
-public class DynamicBayesNet {
+public class DynamicBayesNet implements Serializable {
+	
+	static final long serialVersionUID = 42L;
 
 	private List<Attribute> attributes;
 	
@@ -603,4 +606,24 @@ public class DynamicBayesNet {
 		return transitionNets.size();
 	}
 	
+	public int getMarkovLag() {
+		return markovLag;
+	}
+	
+	public boolean hasStaticAtts() {
+		return (staticAttributes != null);
+	}
+	
+	public boolean isStationary() {
+		return (transitionNets.size() == 1);
+	}
+	
+	public List<Attribute> getDynAttributes() {
+		return attributes;
+	}
+	
+	public List<Attribute> getStaticAttributes() {
+		return staticAttributes;
+	}
+
 }

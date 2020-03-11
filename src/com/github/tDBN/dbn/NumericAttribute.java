@@ -1,8 +1,12 @@
 package com.github.tDBN.dbn;
 
+import java.io.Serializable;
+
 import com.github.tDBN.utils.BidirectionalArray;
 
-public class NumericAttribute implements Attribute {
+public class NumericAttribute implements Attribute, Serializable {
+	
+	static final long serialVersionUID = 42L;
 
 	private String name;
 
