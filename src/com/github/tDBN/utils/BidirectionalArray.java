@@ -1,5 +1,6 @@
 package com.github.tDBN.utils;
 
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -14,7 +15,10 @@ import java.util.Map;
  * @param <T>
  *            array type
  */
-public class BidirectionalArray<T> {
+public class BidirectionalArray<T> implements Serializable {
+	
+	static final long serialVersionUID = 42L;
+	
 	private List<T> indexToValueMap = new ArrayList<T>();
 	private Map<T, Integer> valueToIndexMap = new HashMap<T, Integer>();
 
