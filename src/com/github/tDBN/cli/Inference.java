@@ -139,6 +139,22 @@ public class Inference {
 				.withDescription("File in which the serialized object with the sdtDBN should be stored.")
 				.withLongOpt("toObjFile").create("toFile");
 				
+		Option mustNotAppear_dynPast = OptionBuilder.withArgName("file").hasArg()
+				.withDescription("File that, for each node Xi[t], contains the dynamic nodes from t'<t that cannot be parents of each Xi[t].")
+				.withLongOpt("mustNotAppear_dynPast").create("mNotA_dynPast");
+		
+		Option mustAppear_dynPast = OptionBuilder.withArgName("file").hasArg()
+				.withDescription("File that, for each node Xi[t], contains the dynamic nodes from t'<t that must be parents of each Xi[t].")
+				.withLongOpt("mustAppear_dynPast").create("mA_dynPast");
+		
+		Option mustNotAppear_static = OptionBuilder.withArgName("file").hasArg()
+				.withDescription("File that, for each node Xi[t], contains the static nodes that cannot be parents of each Xi[t].")
+				.withLongOpt("mustNotAppear_static").create("mNotA_static");
+		
+		Option mustAppear_static = OptionBuilder.withArgName("file").hasArg()
+				.withDescription("File that, for each node Xi[t], contains the static nodes that must be parents of each Xi[t].")
+				.withLongOpt("mustAppear_static").create("mA_static");
+				
 		options.addOption(inputFile);
 		options.addOption(numParents);
 		options.addOption(outputFile);
@@ -164,6 +180,11 @@ public class Inference {
 		options.addOption(fromObjectFile);
 		options.addOption(toObjectFile);
 
+		options.addOption(mustNotAppear_dynPast);
+		options.addOption(mustAppear_dynPast);
+		options.addOption(mustNotAppear_static);
+		options.addOption(mustAppear_static);
+		
 		CommandLineParser parser = new GnuParser();
 		try {
 
@@ -200,6 +221,11 @@ public class Inference {
 			Observations o = null;
 			ObservationsStatic staticObservations = null;
 			
+			String mustNotAppear_dynPast_filename = cmd.hasOption("mNotA_dynPast") == true ? cmd.getOptionValue("mustNotAppear_dynPast") : null;
+			String mustAppear_dynPast_filename = cmd.hasOption("mA_dynPast") == true ? cmd.getOptionValue("mustAppear_dynPast") : null;
+			String mustNotAppear_static_filename = cmd.hasOption("mNotA_static") == true ? cmd.getOptionValue("mustNotAppear_static") : null;
+			String mustAppear_static_filename = cmd.hasOption("mA_static") == true ? cmd.getOptionValue("mustAppear_static") : null;
+			
 			if(learnDBNfromObjFile == false) {
 
 				// TODO: check sanity
@@ -212,7 +238,7 @@ public class Inference {
 				if(hasStatic == true)
 					staticObservations = new ObservationsStatic(cmd.getOptionValue("is"), o.getSubjLinePerMtrx(), o.numTransitions(), o.getNumbSubjects());			
 	
-				Scores s = new Scores(o, Integer.parseInt(cmd.getOptionValue("p")), stationary, verbose, staticObservations, Integer.parseInt(cmd.getOptionValue("b", "2")));
+				Scores s = new Scores(o, Integer.parseInt(cmd.getOptionValue("p")), stationary, verbose, staticObservations, Integer.parseInt(cmd.getOptionValue("b", "2")), mustNotAppear_dynPast_filename, mustAppear_dynPast_filename, mustNotAppear_static_filename, mustAppear_static_filename );
 				if (cmd.hasOption("s") && cmd.getOptionValue("s").equalsIgnoreCase("ll")) {
 					if (verbose)
 						System.out.println("Evaluating network with LL score.");
