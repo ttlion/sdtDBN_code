@@ -5,9 +5,11 @@ import java.io.IOException;
 import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.ListIterator;
 import java.util.Map;
+import java.util.Set;
 
 import com.github.tDBN.utils.Edge;
 import com.github.tDBN.utils.Utils;
@@ -91,10 +93,10 @@ public class Scores {
 	 * Each attribute has its lists of either dynamic (from previous timesteps or the same timestep)
 	 * or static nodes that must be parents or that cannot be parents
 	 */
-	private List<List<Integer>> forbiddenParentsPast;
+	private List<List<Integer>> forbiddenParentsPast; // This can simply be List<List<>> because only used in the initial (no computationally expensive) part
 	private List<List<Integer>> mandatoryParentsPast;
-	// private List<List<Integer>> forbiddenParentsSameTimestep;
-	// private List<List<Integer>> mandatoryParentsSameTimestep;
+	private List<Set<Integer>> forbiddenParentsSameTimestep; // This must be List<Set<>> because it will be used in each iteration of evaluate cycle
+	private List<Set<Integer>> mandatoryParentsSameTimestep;
 	private List<List<Integer>> forbiddenStaticParents;
 	private List<List<Integer>> mandatoryStaticParents;
 	
@@ -113,7 +115,7 @@ public class Scores {
 	private boolean verbose;
 	
 	public Scores(Observations observations, int maxParents, boolean stationaryProcess, boolean verbose) {
-		this(observations, maxParents, false, true, null, 0, null, null, null, null);
+		this(observations, maxParents, false, true, null, 0, null, null, null, null, null, null);
 	}
 	
 	public Scores(Observations observations, int maxParents) {
@@ -123,7 +125,7 @@ public class Scores {
 	/**
 	 * Creates the Scores object, allocating space for every data structure necessary
 	 */
-	public Scores(Observations observations, int maxParents, boolean stationaryProcess, boolean verbose, ObservationsStatic observStatic, int maxStaticParents, String pathFileForbiddenDyn, String pathFileMandatoryDyn, String pathFileForbiddenStatic, String pathFileMandatoryStatic) {
+	public Scores(Observations observations, int maxParents, boolean stationaryProcess, boolean verbose, ObservationsStatic observStatic, int maxStaticParents, String pathFileForbiddenDyn, String pathFileMandatoryDyn, String pathFileForbiddenStatic, String pathFileMandatoryStatic, String pathFileForbiddenDyn_sameTimestep, String pathFileMandatoryDyn_sameTimestep) {
 		this.observations = observations; this.observStatic = observStatic;
 		this.maxParents = maxParents; this.maxStaticParents = maxStaticParents;
 		this.stationaryProcess = stationaryProcess;
@@ -147,6 +149,12 @@ public class Scores {
 		boolean ret = fillForbiddenOrMandatoryLists(observations, observStatic, pathFileForbiddenDyn, pathFileMandatoryDyn, pathFileForbiddenStatic, pathFileMandatoryStatic);
 		if(ret == false) {
 			System.out.println("Error with forbidden or mandatory files!");
+			System.exit(1);
+		}
+		
+		ret = fillForbiddenOrMandatoryLists_sameTimestep(observations, pathFileForbiddenDyn_sameTimestep, pathFileMandatoryDyn_sameTimestep);
+		if(ret == false) {
+			System.out.println("Error with forbidden or mandatory files of the same timestep!");
 			System.exit(1);
 		}
 		
@@ -258,6 +266,8 @@ public class Scores {
 		int[] numBestScoresPast = new int[n];
 		int[][] numBestScores = new int[n][n];
 
+		double bigNumber = 10E200;
+
 		for (int t = 0; t < numTransitions; t++) {
 			// System.out.println("evaluating score in transition " + t + "/" +
 			// numTransitions);
@@ -282,6 +292,8 @@ public class Scores {
 			}
 
 			for (int i = 0; i < n; i++) {
+				Set<Integer> setForbiddenParents = forbiddenParentsSameTimestep.get(i);
+				Set<Integer> setMandatoryParents = mandatoryParentsSameTimestep.get(i);
 				for (int j = 0; j < n; j++) {
 					if (i != j) {
 						double bestScore = Double.NEGATIVE_INFINITY;
@@ -298,7 +310,13 @@ public class Scores {
 								numBestScores[i][j]++;
 						}
 
-						scoresMatrix[t][i][j] += bestScore;
+						if( setForbiddenParents.contains(j) ) { // bias Eij so that j->i does not appear in intra-slice
+							scoresMatrix[t][i][j] += bestScore - bigNumber;
+						} else if( setMandatoryParents.contains(j) ) { // bias Eij so that j->i appears in intra-slice
+							scoresMatrix[t][i][j] += bestScore + bigNumber;
+						} else { // do not bias if not neither forbidden nor mandatory
+							scoresMatrix[t][i][j] += bestScore;
+						}
 
 					}
 				}
@@ -564,6 +582,8 @@ public class Scores {
 		int[] numBestScoresPast = new int[n];
 		int[][] numBestScores = new int[n][n];
 
+		double bigNumber = 10E200;
+
 		for (int t = 0; t < numTransitions; t++) {
 			//System.out.println("\n\n\nevaluating score in transition " + t + "/" + numTransitions);
 			for (int i = 0; i < n; i++) {
@@ -610,6 +630,8 @@ public class Scores {
 			}
 			
 			for (int i = 0; i < n; i++) {
+				Set<Integer> setForbiddenParents = forbiddenParentsSameTimestep.get(i);
+				Set<Integer> setMandatoryParents = mandatoryParentsSameTimestep.get(i);
 				for (int j = 0; j < n; j++) {
 					if (i != j) {
 						double bestScore = Double.NEGATIVE_INFINITY;
@@ -648,7 +670,13 @@ public class Scores {
 							
 						}
 
-						scoresMatrix[t][i][j] += bestScore;
+						if( setForbiddenParents.contains(j) ) { // bias Eij so that j->i does not appear in intra-slice
+							scoresMatrix[t][i][j] += bestScore - bigNumber;
+						} else if( setMandatoryParents.contains(j) ) { // bias Eij so that j->i appears in intra-slice
+							scoresMatrix[t][i][j] += bestScore + bigNumber;
+						} else { // do not bias if not neither forbidden nor mandatory
+							scoresMatrix[t][i][j] += bestScore;
+						}
 
 					}
 				}
@@ -836,6 +864,113 @@ public class Scores {
 	}
 	
 	
+	public boolean fillForbiddenOrMandatoryLists_sameTimestep(Observations observations, String pathFileForbiddenDyn_sameTimestep, String pathFileMandatoryDyn_sameTimestep) {
+		
+		if(observations == null)
+			return false;
+		
+		// Always init even if not filling, for the program not to crash
+		int n = observations.numAttributes();
+		forbiddenParentsSameTimestep = new ArrayList<Set<Integer>>(n);
+		mandatoryParentsSameTimestep = new ArrayList<Set<Integer>>(n);
+		for(int i = 0; i < n; i++) {
+			forbiddenParentsSameTimestep.add(new HashSet<Integer>(n/3));
+			mandatoryParentsSameTimestep.add(new HashSet<Integer>(n/3));
+		}
+		
+		if(pathFileForbiddenDyn_sameTimestep != null)
+			fillForbiddenOrMandatoryLists_sameTimestep(pathFileForbiddenDyn_sameTimestep, observations, forbiddenParentsSameTimestep);
+		if(pathFileMandatoryDyn_sameTimestep != null)
+			fillForbiddenOrMandatoryLists_sameTimestep(pathFileMandatoryDyn_sameTimestep, observations, mandatoryParentsSameTimestep);
+		
+		// Check error conditions
+		for(int i = 0; i < n; i++) {
+			Set<Integer> forbidden = forbiddenParentsSameTimestep.get(i);
+			Set<Integer> mandatory = mandatoryParentsSameTimestep.get(i);
+			
+			if(forbidden.size() >= n-1) {
+				if(forbidden.contains(i) == false || forbidden.size() == n ) {
+					System.err.println("Error: Cannot forbid all parents from own timestep in att " + observations.getAttributes().get(i).getName() + ". Check proper parameter to define the root of the tree!");
+					System.exit(1);
+				}
+			}
+			
+			if(mandatory.contains(i)) {
+				System.err.println("Error: File " + pathFileMandatoryDyn_sameTimestep + " badly formatted. " + observations.getAttributes().get(i).getName() + " cannot be parent of itself in the same timestep.");
+				System.exit(1);
+			}
+			
+			for(Integer elem : forbidden) {
+				if(mandatory.contains(elem)) {
+					System.err.println("Error: Cannot have same dynamic node as mandatory and forbidden parent of att " + observations.getAttributes().get(i).getName());
+					System.exit(1);
+				}
+			}
+		}
+		
+		return true;
+	}
+	
+	public void fillForbiddenOrMandatoryLists_sameTimestep(String pathToFile, Observations observations, List<Set<Integer>> setsToFill) {
+		
+		// Create map with keys the variable names and values their respective indexes in attributes array
+		Map<String, Integer> nameToIndx = new HashMap<String, Integer>();
+		int cnt=0;
+		for (Attribute att : observations.getAttributes()) {
+			nameToIndx.put(att.getName(), new Integer(cnt));
+			cnt++;
+		}
+		
+		try {
+
+			// open and parse the useful observations csv file
+			CSVReader reader = new CSVReader(new FileReader(pathToFile));
+			List<String[]> lines = reader.readAll();
+			reader.close();
+
+			ListIterator<String[]> li = lines.listIterator();
+			
+			String[] dataLine; // declare dataline
+			
+			while (li.hasNext()) {
+
+				dataLine = li.next();
+
+				// check for line sanity
+				if (dataLine.length < 2) {
+					System.err.println("Error: File " + pathToFile + " badly formatted. Line has len < 2.");
+					System.exit(1);
+				}
+				
+				if(nameToIndx.containsKey(dataLine[0]) == false) {
+					System.err.println("Error: File " + pathToFile + " badly formatted. " + dataLine[0] + " is not a dynamic attribute.");
+					System.exit(1);
+				}
+				
+				int child = nameToIndx.get(dataLine[0]);
+				
+				for(int i=1; i<dataLine.length; i++) {
+					
+					if(nameToIndx.containsKey(dataLine[i]) == false) {
+						System.err.println("Error: File " + pathToFile + " badly formatted. " + dataLine[i] + " is not a valid attribute to consider as dynamic parent.");
+						System.exit(1);
+					}
+					
+					// add forbidden/mandatory relation dataline[i]-->dataline[0]
+					setsToFill.get(child).add(nameToIndx.get(dataLine[i]));
+					
+				}
+				
+			}
+			
+		} catch (IOException e) {
+			System.err.println("Error: File " + pathToFile + " could not be opened.");
+			e.printStackTrace();
+			System.exit(1);
+		}
+		
+		return;
+	}
 	
 
 }

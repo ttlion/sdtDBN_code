@@ -129,7 +129,7 @@ public class MainWithStatic {
 			if(hasStatic == true)
 				staticObservations = new ObservationsStatic(cmd.getOptionValue("is"), o.getSubjLinePerMtrx(), o.numTransitions(), o.getNumbSubjects());			
 			
-			Scores s = new Scores(o, Integer.parseInt(cmd.getOptionValue("p")), stationary, verbose, staticObservations, Integer.parseInt(cmd.getOptionValue("b", "2")), null, null, null, null);
+			Scores s = new Scores(o, Integer.parseInt(cmd.getOptionValue("p")), stationary, verbose, staticObservations, Integer.parseInt(cmd.getOptionValue("b", "2")), null, null, null, null, null, null);
 			if (cmd.hasOption("s") && cmd.getOptionValue("s").equalsIgnoreCase("ll")) {
 				if (verbose)
 					System.out.println("Evaluating network with LL score.");
