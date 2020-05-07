@@ -81,13 +81,13 @@ public class Scores {
 	 * A list of all possible sets of dynamic parent nodes. Set cardinality lies within
 	 * the range [1, maxParents].
 	 */
-	private List<List<List<Integer>>> parentSets;
+	private List<List<List<List<Integer>>>> parentSets;
 	
 	/**
 	 * A list of all possible sets of static parent nodes. Set cardinality lies within
 	 * the range [1, maxStaticParents].
 	 */
-	private List<List<List<Integer>>> staticSets;
+	private List<List<List<List<Integer>>>> staticSets;
 
 	/**
 	 * Each attribute has its lists of either dynamic (from previous timesteps or the same timestep)
@@ -103,7 +103,7 @@ public class Scores {
 	/*
 	 *  Array with size n, where each position [i] is true if X[i] has at least 1 mandatory static parent, false otherwise
 	 */
-	private boolean[] hasMandatoryStatic; 
+	private boolean[][] hasMandatoryStatic; 
 
 	/**
 	 * If true, evaluates only one score matrix for all transitions.
@@ -166,18 +166,39 @@ public class Scores {
 			previous = current;
 		}
 		
+		int numTransitions = stationaryProcess ? 1 : observations.numTransitions();
+		
 		// generate all possible dynamic parents sets
-		parentSets = new ArrayList<List<List<Integer>>>(n); // 1 list per node
-		for(int i=0; i < n; i++) {
-			parentSets.add( new ArrayList<List<Integer>>(size) ); // create nodes list of possible dynamic parents sets
-			for (int k = 1; k <= p; k++) { // fill the created list
-				generateCombinations(n * markovLag, k, parentSets.get(i), forbiddenParentsPast.get(i), mandatoryParentsPast.get(i), n);
+		parentSets = new ArrayList<List<List<List<Integer>>>>(numTransitions); // 1 set of lists per timestep
+		
+		for(int t=0 ; t<numTransitions; t++) { // For each transition
+			List<List<List<Integer>>> listsInTransition = new ArrayList<List<List<Integer>>>(n); // 1 per node
+			parentSets.add(listsInTransition);
+			
+			for(int i=0; i < n; i++) { // For each node
+				List<List<Integer>> listsOfNodeInTimestep = new ArrayList<List<Integer>>(size);
+				listsInTransition.add(listsOfNodeInTimestep);
+				
+				for (int k = 1; k <= p; k++) { // fill the created list
+					generateCombinations(n * markovLag, k, listsOfNodeInTimestep, forbiddenParentsPast.get(i), mandatoryParentsPast.get(i), n);
+				}
 			}
 		}
 		
-		
-		// Same thing but for static attributes if they exist
-		staticSets = new ArrayList<List<List<Integer>>>(n); // Create this list to avoid program crashing, even if letting it empty
+//		System.out.println("Parent sets:");
+//		for(int t=0 ; t<numTransitions; t++) {
+//			System.out.println("Timestep " + t);
+//			for(int i=0; i < n; i++) {
+//				System.out.println("\t Node " + observations.getAttributes().get(i).getName());
+//				for (List<Integer> list : parentSets.get(t).get(i)) { // fill the created list
+//					System.out.print("\t\t[ ");
+//					for(Integer elem : list) {
+//						System.out.print(observations.getAttributes().get(elem%n).getName() + "[" + (elem/n) + "]" +", ");
+//					}
+//					System.out.println("]");
+//				}
+//			}
+//		}
 		
 		if(observStatic != null) {
 			
@@ -188,21 +209,45 @@ public class Scores {
 				previous = current;
 			}
 		
-			hasMandatoryStatic = new boolean[n];
+			hasMandatoryStatic = new boolean[numTransitions][n];
 			
 			// generate all possible static parents sets
-			for(int i=0; i < n; i++) {
-				staticSets.add( new ArrayList<List<Integer>>(sizeStatic) ); // create nodes list of possible static parents sets
-				hasMandatoryStatic[i] = (mandatoryStaticParents.get(i).size() != 0); // fill this array to be used in the evaluateWithStatic method
-				for (int k = 1; k <= b; k++) { // fill the created list
-					generateCombinations(n_static, k, staticSets.get(i), forbiddenStaticParents.get(i), mandatoryStaticParents.get(i), n_static);
+			staticSets = new ArrayList<List<List<List<Integer>>>>(numTransitions); // 1 set of lists per timestep
+			
+			for(int t=0 ; t<numTransitions; t++) {
+				List<List<List<Integer>>> listsInTransition_static = new ArrayList<List<List<Integer>>>(n); // 1 per node
+				staticSets.add(listsInTransition_static);
+				
+				for(int i=0; i < n; i++) {
+					List<List<Integer>> listsOfNodeInTimestep_static = new ArrayList<List<Integer>>(sizeStatic);
+					listsInTransition_static.add(listsOfNodeInTimestep_static);
+					
+					hasMandatoryStatic[t][i] = (mandatoryStaticParents.get(i).size() != 0); // fill this array to be used in the evaluateWithStatic method
+					
+					for (int k = 1; k <= b; k++) { // fill the created list
+						generateCombinations(n_static, k, listsOfNodeInTimestep_static, forbiddenStaticParents.get(i), mandatoryStaticParents.get(i), n_static);
+					}
 				}
 			}
+			
+//			System.out.println("Static Parent sets:");
+//			for(int t=0 ; t<numTransitions; t++) {
+//				System.out.println("Timestep " + t);
+//				for(int i=0; i < n; i++) {
+//					System.out.println("\t Node " + observations.getAttributes().get(i).getName());
+//					for (List<Integer> list : staticSets.get(t).get(i)) { // fill the created list
+//						System.out.print("\t\t[ ");
+//						for(Integer elem : list) {
+//							System.out.print(observStatic.getAttributes().get(elem%n_static).getName() + ", ");
+//						}
+//						System.out.println("]");
+//					}
+//				}
+//			}
 			
 		}
 		
 		// ArrayList allocations
-		int numTransitions = stationaryProcess ? 1 : observations.numTransitions();
 		parentNodesPast = new ArrayList<List<List<Integer>>>(numTransitions);
 		parentNodes = new ArrayList<List<List<List<Integer>>>>(numTransitions);
 		
@@ -271,10 +316,13 @@ public class Scores {
 		for (int t = 0; t < numTransitions; t++) {
 			// System.out.println("evaluating score in transition " + t + "/" +
 			// numTransitions);
+
+			List<List<List<Integer>>> listsInTransition = parentSets.get(t);
+
 			for (int i = 0; i < n; i++) {
 				// System.out.println("evaluating node " + i + "/" + n);
 				double bestScore = Double.NEGATIVE_INFINITY;
-				for (List<Integer> parentSet : parentSets.get(i)) {
+				for (List<Integer> parentSet : listsInTransition.get(i)) {
 					double score = stationaryProcess ? sf.evaluate(observations, parentSet, i, null, null) : sf.evaluate(
 							observations, t, parentSet, i, null, null);
 					// System.out.println("Xi:" + i + " ps:" + parentSet +
@@ -297,7 +345,7 @@ public class Scores {
 				for (int j = 0; j < n; j++) {
 					if (i != j) {
 						double bestScore = Double.NEGATIVE_INFINITY;
-						for (List<Integer> parentSet : parentSets.get(i)) {
+						for (List<Integer> parentSet : listsInTransition.get(i)) {
 							double score = stationaryProcess ? sf.evaluate(observations, parentSet, j, i, null, null) : sf
 									.evaluate(observations, t, parentSet, j, i, null, null);
 							// System.out.println("Xi:" + i + " Xj:" + j +
@@ -586,15 +634,19 @@ public class Scores {
 
 		for (int t = 0; t < numTransitions; t++) {
 			//System.out.println("\n\n\nevaluating score in transition " + t + "/" + numTransitions);
+			
+			List<List<List<Integer>>> listsInTransition = parentSets.get(t);
+			List<List<List<Integer>>> listsInTransition_static = staticSets.get(t);
+			
 			for (int i = 0; i < n; i++) {
 				//System.out.println("\n\nevaluating node " + i + "/" + n);
 				double bestScore = Double.NEGATIVE_INFINITY;
-				for (List<Integer> parentSet : parentSets.get(i)) { // Try all possible configurations of dynamic parents
+				for (List<Integer> parentSet : listsInTransition.get(i)) { // Try all possible configurations of dynamic parents
 					
 					double score;
 
 					// First, try configuration without any static parents if possible
-					if(hasMandatoryStatic[i] == false) { // In this case (no mandatory static parents), the configuration without static parents is possible
+					if(hasMandatoryStatic[t][i] == false) { // In this case (no mandatory static parents), the configuration without static parents is possible
 						score = stationaryProcess ? sf.evaluate(observations, parentSet, i, null, null) : sf.evaluate(
 								observations, t, parentSet, i, null, null);
 					
@@ -608,7 +660,7 @@ public class Scores {
 					}					
 					
 					// Then try with all possible combinations of static parents
-					for(List<Integer> staticParentSet : staticSets.get(i)) {
+					for(List<Integer> staticParentSet : listsInTransition_static.get(i)) {
 						
 						score = stationaryProcess ? sf.evaluate(observations, parentSet, i, observStatic, staticParentSet) : sf.evaluate(
 								observations, t, parentSet, i, observStatic, staticParentSet);
@@ -635,12 +687,12 @@ public class Scores {
 				for (int j = 0; j < n; j++) {
 					if (i != j) {
 						double bestScore = Double.NEGATIVE_INFINITY;
-						for (List<Integer> parentSet : parentSets.get(i)) { // Try all possible configurations of dynamic parents
+						for (List<Integer> parentSet : listsInTransition.get(i)) { // Try all possible configurations of dynamic parents
 							
 							double score;
 							
 							// First, try configuration without any static parents if possible
-							if(hasMandatoryStatic[i] == false) { // In this case (no mandatory static parents), the configuration without static parents is possible
+							if(hasMandatoryStatic[t][i] == false) { // In this case (no mandatory static parents), the configuration without static parents is possible
 								score = stationaryProcess ? sf.evaluate(observations, parentSet, j, i, null, null) : sf
 										.evaluate(observations, t, parentSet, j, i, null, null);
 							
@@ -654,8 +706,8 @@ public class Scores {
 							}
 							
 							// Then try with all possible combinations of static parents
-							for(List<Integer> staticParentSet : staticSets.get(i)) {
-								
+							for(List<Integer> staticParentSet : listsInTransition_static.get(i)) {
+
 								score = stationaryProcess ? sf.evaluate(observations, parentSet, j, i, observStatic, staticParentSet) : sf
 										.evaluate(observations, t, parentSet, j, i, observStatic, staticParentSet);
 								
