@@ -95,8 +95,8 @@ public class Scores {
 	 */
 	private List<List<List<Integer>>> forbiddenParentsPast; // This can simply be List<List<List<>>> because only used in the initial (no computationally expensive) part
 	private List<List<List<Integer>>> mandatoryParentsPast;
-	private List<Set<Integer>> forbiddenParentsSameTimestep; // This must be List<Set<>> because it will be used in each iteration of evaluate cycle
-	private List<Set<Integer>> mandatoryParentsSameTimestep;
+	private List<List<Set<Integer>>> forbiddenParentsSameTimestep; // This must be List<List<Set<>>> because it will be used in each iteration of evaluate cycle
+	private List<List<Set<Integer>>> mandatoryParentsSameTimestep;
 	private List<List<List<Integer>>> forbiddenStaticParents;
 	private List<List<List<Integer>>> mandatoryStaticParents;
 	
@@ -202,6 +202,29 @@ public class Scores {
 			System.out.println("Error with forbidden or mandatory files of the same timestep!");
 			System.exit(1);
 		}
+		
+//		int aaaa = stationaryProcess ? 1 : observations.numTransitions();
+//		System.out.println("\tForbidden sets parents same timestep:");
+//		for(int t=0; t<aaaa; t++) {
+//			System.out.println("\t\tTimestep " + (t+markovLag) );
+//			for(int i=0; i<n; i++) {
+//				System.out.print("\t\t\tNo " + observations.getAttributes().get(i).getName() + ": [");
+//				for(Integer elem : forbiddenParentsSameTimestep.get(t).get(i)) System.out.print(observations.getAttributes().get(elem).getName() + ", ");
+//				System.out.println("]");
+//			}
+//		}
+//		System.out.println("\n\n");
+//		
+//		System.out.println("\tMandatory sets parents same timestep:");
+//		for(int t=0; t<aaaa; t++) {
+//			System.out.println("\t\tTimestep " + (t+markovLag) );
+//			for(int i=0; i<n; i++) {
+//				System.out.print("\t\t\tNo " + observations.getAttributes().get(i).getName() + ": [");
+//				for(Integer elem : mandatoryParentsSameTimestep.get(t).get(i)) System.out.print(observations.getAttributes().get(elem).getName() + ", ");
+//				System.out.println("]");
+//			}
+//		}
+//		System.out.println("\n\n");
 		
 		// calculate sum_i=1^k nCi
 		int size = n * markovLag;
@@ -396,9 +419,12 @@ public class Scores {
 				}
 			}
 
+			List<Set<Integer>> forbiddenParents_timestep = forbiddenParentsSameTimestep.get(t);
+			List<Set<Integer>> mandatoryParents_timestep = mandatoryParentsSameTimestep.get(t);
+			
 			for (int i = 0; i < n; i++) {
-				Set<Integer> setForbiddenParents = forbiddenParentsSameTimestep.get(i);
-				Set<Integer> setMandatoryParents = mandatoryParentsSameTimestep.get(i);
+				Set<Integer> setForbiddenParents = forbiddenParents_timestep.get(i);
+				Set<Integer> setMandatoryParents = mandatoryParents_timestep.get(i);
 				for (int j = 0; j < n; j++) {
 					if (i != j) {
 						double bestScore = Double.NEGATIVE_INFINITY;
@@ -738,9 +764,12 @@ public class Scores {
 				}
 			}
 			
+			List<Set<Integer>> forbiddenParents_timestep = forbiddenParentsSameTimestep.get(t);
+			List<Set<Integer>> mandatoryParents_timestep = mandatoryParentsSameTimestep.get(t);
+			
 			for (int i = 0; i < n; i++) {
-				Set<Integer> setForbiddenParents = forbiddenParentsSameTimestep.get(i);
-				Set<Integer> setMandatoryParents = mandatoryParentsSameTimestep.get(i);
+				Set<Integer> setForbiddenParents = forbiddenParents_timestep.get(i);
+				Set<Integer> setMandatoryParents = mandatoryParents_timestep.get(i);
 				for (int j = 0; j < n; j++) {
 					if (i != j) {
 						double bestScore = Double.NEGATIVE_INFINITY;
@@ -1035,11 +1064,22 @@ public class Scores {
 		
 		// Always init even if not filling, for the program not to crash
 		int n = observations.numAttributes();
-		forbiddenParentsSameTimestep = new ArrayList<Set<Integer>>(n);
-		mandatoryParentsSameTimestep = new ArrayList<Set<Integer>>(n);
-		for(int i = 0; i < n; i++) {
-			forbiddenParentsSameTimestep.add(new HashSet<Integer>(n/3));
-			mandatoryParentsSameTimestep.add(new HashSet<Integer>(n/3));
+		int numTransitions = stationaryProcess ? 1 : observations.numTransitions();
+		
+		forbiddenParentsSameTimestep = new ArrayList<List<Set<Integer>>>(numTransitions);
+		mandatoryParentsSameTimestep = new ArrayList<List<Set<Integer>>>(numTransitions);
+		
+		for(int t=0; t<numTransitions; t++) {
+			List<Set<Integer>> forbiddenParentsSameTimestep_inTimestep = new ArrayList<Set<Integer>>(n);
+			List<Set<Integer>> mandatoryParentsSameTimestep_inTimestep = new ArrayList<Set<Integer>>(n);
+			
+			forbiddenParentsSameTimestep.add(forbiddenParentsSameTimestep_inTimestep);
+			mandatoryParentsSameTimestep.add(mandatoryParentsSameTimestep_inTimestep);
+			
+			for(int i = 0; i < n; i++) {
+				forbiddenParentsSameTimestep_inTimestep.add(new HashSet<Integer>(n/3));
+				mandatoryParentsSameTimestep_inTimestep.add(new HashSet<Integer>(n/3));
+			}
 		}
 		
 		if(pathFileForbiddenDyn_sameTimestep != null)
@@ -1048,34 +1088,40 @@ public class Scores {
 			fillForbiddenOrMandatoryLists_sameTimestep(pathFileMandatoryDyn_sameTimestep, observations, mandatoryParentsSameTimestep);
 		
 		// Check error conditions
-		for(int i = 0; i < n; i++) {
-			Set<Integer> forbidden = forbiddenParentsSameTimestep.get(i);
-			Set<Integer> mandatory = mandatoryParentsSameTimestep.get(i);
+		for(int t=0; t<numTransitions; t++) {
+			List<Set<Integer>> forbidden_timestep = forbiddenParentsSameTimestep.get(t);
+			List<Set<Integer>> mandatory_timestep = mandatoryParentsSameTimestep.get(t);
 			
-			if(forbidden.size() >= n-1) {
-				if(forbidden.contains(i) == false || forbidden.size() == n ) {
-					System.err.println("Error: Cannot forbid all parents from own timestep in att " + observations.getAttributes().get(i).getName() + ". Check proper parameter to define the root of the tree!");
+			for(int i = 0; i < n; i++) {
+				Set<Integer> forbidden = forbidden_timestep.get(i);
+				Set<Integer> mandatory = mandatory_timestep.get(i);
+				
+				if(forbidden.size() >= n-1) {
+					if(forbidden.contains(i) == false || forbidden.size() == n ) {
+						System.err.println("Error: Cannot forbid all parents from own timestep in att " + observations.getAttributes().get(i).getName() + ". Check proper parameter to define the root of the tree!");
+						System.exit(1);
+					}
+				}
+				
+				if(mandatory.contains(i)) {
+					System.err.println("Error: File " + pathFileMandatoryDyn_sameTimestep + " badly formatted. " + observations.getAttributes().get(i).getName() + " cannot be parent of itself in the same timestep.");
 					System.exit(1);
 				}
-			}
-			
-			if(mandatory.contains(i)) {
-				System.err.println("Error: File " + pathFileMandatoryDyn_sameTimestep + " badly formatted. " + observations.getAttributes().get(i).getName() + " cannot be parent of itself in the same timestep.");
-				System.exit(1);
-			}
-			
-			for(Integer elem : forbidden) {
-				if(mandatory.contains(elem)) {
-					System.err.println("Error: Cannot have same dynamic node as mandatory and forbidden parent of att " + observations.getAttributes().get(i).getName());
-					System.exit(1);
+				
+				for(Integer elem : forbidden) {
+					if(mandatory.contains(elem)) {
+						System.err.println("Error: Cannot have same dynamic node as mandatory and forbidden parent of att " + observations.getAttributes().get(i).getName());
+						System.exit(1);
+					}
 				}
 			}
 		}
 		
+		
 		return true;
 	}
 	
-	public void fillForbiddenOrMandatoryLists_sameTimestep(String pathToFile, Observations observations, List<Set<Integer>> setsToFill) {
+	public void fillForbiddenOrMandatoryLists_sameTimestep(String pathToFile, Observations observations, List<List<Set<Integer>>> setsToFill) {
 		
 		// Create map with keys the variable names and values their respective indexes in attributes array
 		Map<String, Integer> nameToIndx = new HashMap<String, Integer>();
@@ -1084,6 +1130,9 @@ public class Scores {
 			nameToIndx.put(att.getName(), new Integer(cnt));
 			cnt++;
 		}
+		
+		int numTransitions = stationaryProcess ? 1 : observations.numTransitions();
+		int markovLag = observations.getMarkovLag();
 		
 		try {
 
@@ -1101,27 +1150,42 @@ public class Scores {
 				dataLine = li.next();
 
 				// check for line sanity
-				if (dataLine.length < 2) {
-					System.err.println("Error: File " + pathToFile + " badly formatted. Line has len < 2.");
+				if (dataLine.length < 3) {
+					System.err.println("Error: File " + pathToFile + " badly formatted. Line has len < 3.");
 					System.exit(1);
 				}
 				
-				if(nameToIndx.containsKey(dataLine[0]) == false) {
-					System.err.println("Error: File " + pathToFile + " badly formatted. " + dataLine[0] + " is not a dynamic attribute.");
+				int timeStepInInput = -1;
+				try {
+					timeStepInInput = Integer.parseInt(dataLine[0]);
+				} catch (NumberFormatException e) {
+					System.err.println("Error: File " + pathToFile + " badly formatted. " + dataLine[0] + " is not a valid timestep.");
 					System.exit(1);
 				}
 				
-				int child = nameToIndx.get(dataLine[0]);
+				if( (timeStepInInput-markovLag) < 0 || (timeStepInInput-markovLag) >= numTransitions ) {
+					System.err.println("Error: File " + pathToFile + " badly formatted. " + dataLine[0] + " is not a valid timestep.");
+					System.exit(1);
+				}
 				
-				for(int i=1; i<dataLine.length; i++) {
+				int t = timeStepInInput - markovLag;
+				
+				if(nameToIndx.containsKey(dataLine[1]) == false) {
+					System.err.println("Error: File " + pathToFile + " badly formatted. " + dataLine[1] + " is not a dynamic attribute.");
+					System.exit(1);
+				}
+				
+				int child = nameToIndx.get(dataLine[1]);
+				
+				for(int i=2; i<dataLine.length; i++) {
 					
 					if(nameToIndx.containsKey(dataLine[i]) == false) {
 						System.err.println("Error: File " + pathToFile + " badly formatted. " + dataLine[i] + " is not a valid attribute to consider as dynamic parent.");
 						System.exit(1);
 					}
 					
-					// add forbidden/mandatory relation dataline[i]-->dataline[0]
-					setsToFill.get(child).add(nameToIndx.get(dataLine[i]));
+					// add forbidden/mandatory relation dataline[i]-->dataline[1]
+					setsToFill.get(t).get(child).add(nameToIndx.get(dataLine[i]));
 					
 				}
 				
