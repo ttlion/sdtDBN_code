@@ -93,12 +93,12 @@ public class Scores {
 	 * Each attribute has its lists of either dynamic (from previous timesteps or the same timestep)
 	 * or static nodes that must be parents or that cannot be parents
 	 */
-	private List<List<Integer>> forbiddenParentsPast; // This can simply be List<List<>> because only used in the initial (no computationally expensive) part
-	private List<List<Integer>> mandatoryParentsPast;
+	private List<List<List<Integer>>> forbiddenParentsPast; // This can simply be List<List<List<>>> because only used in the initial (no computationally expensive) part
+	private List<List<List<Integer>>> mandatoryParentsPast;
 	private List<Set<Integer>> forbiddenParentsSameTimestep; // This must be List<Set<>> because it will be used in each iteration of evaluate cycle
 	private List<Set<Integer>> mandatoryParentsSameTimestep;
-	private List<List<Integer>> forbiddenStaticParents;
-	private List<List<Integer>> mandatoryStaticParents;
+	private List<List<List<Integer>>> forbiddenStaticParents;
+	private List<List<List<Integer>>> mandatoryStaticParents;
 	
 	/*
 	 *  Array with size n, where each position [i] is true if X[i] has at least 1 mandatory static parent, false otherwise
@@ -152,6 +152,51 @@ public class Scores {
 			System.exit(1);
 		}
 		
+//		int aaaa = stationaryProcess ? 1 : observations.numTransitions();
+//		System.out.println("\tForbidden Lists parents past:");
+//		for(int t=0; t<aaaa; t++) {
+//			System.out.println("\t\tTimestep " + (t+markovLag) );
+//			for(int i=0; i<n; i++) {
+//				System.out.print("\t\t\tNo " + observations.getAttributes().get(i).getName() + ": [");
+//				for(Integer elem : forbiddenParentsPast.get(t).get(i)) System.out.print(observations.getAttributes().get(elem).getName() + ", ");
+//				System.out.println("]");
+//			}
+//		}
+//		System.out.println("\n\n");
+//		
+//		System.out.println("\tMandatory Lists parents past:");
+//		for(int t=0; t<aaaa; t++) {
+//			System.out.println("\t\tTimestep " + (t+markovLag) );
+//			for(int i=0; i<n; i++) {
+//				System.out.print("\t\t\tNo " + observations.getAttributes().get(i).getName() + ": [");
+//				for(Integer elem : mandatoryParentsPast.get(t).get(i)) System.out.print(observations.getAttributes().get(elem).getName() + ", ");
+//				System.out.println("]");
+//			}
+//		}
+//		System.out.println("\n\n");
+//		
+//		System.out.println("\tForbidden Lists parents static:");
+//		for(int t=0; t<aaaa; t++) {
+//			System.out.println("\t\tTimestep " + (t+markovLag) );
+//			for(int i=0; i<n; i++) {
+//				System.out.print("\t\t\tNo " + observations.getAttributes().get(i).getName() + ": [");
+//				for(Integer elem : forbiddenStaticParents.get(t).get(i)) System.out.print(observStatic.getAttributes().get(elem).getName() + ", ");
+//				System.out.println("]");
+//			}
+//		}
+//		System.out.println("\n\n");
+//		
+//		System.out.println("\tMandatory Lists parents static:");
+//		for(int t=0; t<aaaa; t++) {
+//			System.out.println("\t\tTimestep " + (t+markovLag) );
+//			for(int i=0; i<n; i++) {
+//				System.out.print("\t\t\tNo " + observations.getAttributes().get(i).getName() + ": [");
+//				for(Integer elem : mandatoryStaticParents.get(t).get(i)) System.out.print(observStatic.getAttributes().get(elem).getName() + ", ");
+//				System.out.println("]");
+//			}
+//		}
+//		System.out.println("\n\n");
+		
 		ret = fillForbiddenOrMandatoryLists_sameTimestep(observations, pathFileForbiddenDyn_sameTimestep, pathFileMandatoryDyn_sameTimestep);
 		if(ret == false) {
 			System.out.println("Error with forbidden or mandatory files of the same timestep!");
@@ -180,14 +225,14 @@ public class Scores {
 				listsInTransition.add(listsOfNodeInTimestep);
 				
 				for (int k = 1; k <= p; k++) { // fill the created list
-					generateCombinations(n * markovLag, k, listsOfNodeInTimestep, forbiddenParentsPast.get(i), mandatoryParentsPast.get(i), n);
+					generateCombinations(n * markovLag, k, listsOfNodeInTimestep, forbiddenParentsPast.get(t).get(i), mandatoryParentsPast.get(t).get(i), n);
 				}
 			}
 		}
 		
 //		System.out.println("Parent sets:");
 //		for(int t=0 ; t<numTransitions; t++) {
-//			System.out.println("Timestep " + t);
+//			System.out.println("Timestep " + (t+markovLag));
 //			for(int i=0; i < n; i++) {
 //				System.out.println("\t Node " + observations.getAttributes().get(i).getName());
 //				for (List<Integer> list : parentSets.get(t).get(i)) { // fill the created list
@@ -222,19 +267,19 @@ public class Scores {
 					List<List<Integer>> listsOfNodeInTimestep_static = new ArrayList<List<Integer>>(sizeStatic);
 					listsInTransition_static.add(listsOfNodeInTimestep_static);
 					
-					hasMandatoryStatic[t][i] = (mandatoryStaticParents.get(i).size() != 0); // fill this array to be used in the evaluateWithStatic method
+					hasMandatoryStatic[t][i] = (mandatoryStaticParents.get(t).get(i).size() != 0); // fill this array to be used in the evaluateWithStatic method
 					
 					for (int k = 1; k <= b; k++) { // fill the created list
-						generateCombinations(n_static, k, listsOfNodeInTimestep_static, forbiddenStaticParents.get(i), mandatoryStaticParents.get(i), n_static);
+						generateCombinations(n_static, k, listsOfNodeInTimestep_static, forbiddenStaticParents.get(t).get(i), mandatoryStaticParents.get(t).get(i), n_static);
 					}
 				}
 			}
 			
-//			System.out.println("Static Parent sets:");
+//			System.out.println("static parent sets:");
 //			for(int t=0 ; t<numTransitions; t++) {
-//				System.out.println("Timestep " + t);
+//				System.out.println("timestep " + (t+markovLag));
 //				for(int i=0; i < n; i++) {
-//					System.out.println("\t Node " + observations.getAttributes().get(i).getName());
+//					System.out.println("\t node " + observations.getAttributes().get(i).getName());
 //					for (List<Integer> list : staticSets.get(t).get(i)) { // fill the created list
 //						System.out.print("\t\t[ ");
 //						for(Integer elem : list) {
@@ -763,11 +808,22 @@ public class Scores {
 		
 		// Always init even if not filling, for the program not to crash
 		int n = observations.numAttributes();
-		forbiddenParentsPast = new ArrayList<List<Integer>>(n);
-		mandatoryParentsPast = new ArrayList<List<Integer>>(n);
-		for(int i = 0; i < n; i++) {
-			forbiddenParentsPast.add(new ArrayList<Integer>(n/3));
-			mandatoryParentsPast.add(new ArrayList<Integer>(n/3));
+		int numTransitions = stationaryProcess ? 1 : observations.numTransitions();
+		
+		forbiddenParentsPast = new ArrayList<List<List<Integer>>>(numTransitions);
+		mandatoryParentsPast = new ArrayList<List<List<Integer>>>(numTransitions);
+		
+		for(int t=0; t<numTransitions; t++) {
+			List<List<Integer>> forbiddenParentsPast_timestep = new ArrayList<List<Integer>>(n);
+			List<List<Integer>> mandatoryParentsPast_timestep = new ArrayList<List<Integer>>(n);
+			
+			forbiddenParentsPast.add(forbiddenParentsPast_timestep);
+			mandatoryParentsPast.add(mandatoryParentsPast_timestep);
+			
+			for(int i = 0; i < n; i++) {
+				forbiddenParentsPast_timestep.add(new ArrayList<Integer>(n/3));
+				mandatoryParentsPast_timestep.add(new ArrayList<Integer>(n/3));
+			}
 		}
 		
 		if(pathFileForbiddenDyn != null)
@@ -776,34 +832,52 @@ public class Scores {
 			fillForbiddenOrMandatoryLists(pathFileMandatoryDyn, observations, null, mandatoryParentsPast);
 		
 		// Check error conditions
-		for(int i = 0; i < n; i++) {
-			List<Integer> forbidden = forbiddenParentsPast.get(i);
-			List<Integer> mandatory = mandatoryParentsPast.get(i);
+		for(int t=0; t<numTransitions; t++) {
 			
-			if(forbidden.size() >= n) {
-				System.err.println("Error: Cannot forbid all parents from past in att " + observations.getAttributes().get(i).getName());
-				System.exit(1);
-			}
-			if(mandatory.size() > maxParents) {
-				System.err.println("Error: Cannot make number of mandatory dynParentsFromPast > maxParentsFromPast in att " + observations.getAttributes().get(i).getName());
-				System.exit(1);
-			}
-			for(Integer elem : forbidden) {
-				if(mandatory.contains(elem)) {
-					System.err.println("Error: Cannot have same dynamic node as mandatory and forbidden parent of att " + observations.getAttributes().get(i).getName());
+			List<List<Integer>> forbidden_timestep = forbiddenParentsPast.get(t);
+			List<List<Integer>> mandatory_timestep = mandatoryParentsPast.get(t);
+			
+			for(int i = 0; i < n; i++) {
+				List<Integer> forbidden = forbidden_timestep.get(i);
+				List<Integer> mandatory = mandatory_timestep.get(i);
+				
+				if(forbidden.size() >= n) {
+					System.err.println("Error: Cannot forbid all parents from past in att " + observations.getAttributes().get(i).getName());
 					System.exit(1);
 				}
+				if(mandatory.size() > maxParents) {
+					System.err.println("Error: Cannot make number of mandatory dynParentsFromPast > maxParentsFromPast in att " + observations.getAttributes().get(i).getName());
+					System.exit(1);
+				}
+				for(Integer elem : forbidden) {
+					if(mandatory.contains(elem)) {
+						System.err.println("Error: Cannot have same dynamic node as mandatory and forbidden parent of att " + observations.getAttributes().get(i).getName());
+						System.exit(1);
+					}
+				}
 			}
+			
 		}
+		
 		
 		if(observationsStatic != null) {
 			// Always init even if not filling, for the program not to crash
 			int n_static = observationsStatic.numAttributes();
-			forbiddenStaticParents = new ArrayList<List<Integer>>(n);
-			mandatoryStaticParents = new ArrayList<List<Integer>>(n);
-			for(int i = 0; i < n; i++) {
-				forbiddenStaticParents.add(new ArrayList<Integer>(n_static/3));
-				mandatoryStaticParents.add(new ArrayList<Integer>(n_static/3));
+			
+			forbiddenStaticParents = new ArrayList<List<List<Integer>>>(numTransitions);
+			mandatoryStaticParents = new ArrayList<List<List<Integer>>>(numTransitions);
+			
+			for(int t=0; t<numTransitions; t++) {
+				List<List<Integer>> forbiddenStatic_timestep = new ArrayList<List<Integer>>(n);
+				List<List<Integer>> mandatoryStatic_timestep = new ArrayList<List<Integer>>(n);
+				
+				forbiddenStaticParents.add(forbiddenStatic_timestep);
+				mandatoryStaticParents.add(mandatoryStatic_timestep);
+				
+				for(int i = 0; i < n; i++) {
+					forbiddenStatic_timestep.add(new ArrayList<Integer>(n_static/3));
+					mandatoryStatic_timestep.add(new ArrayList<Integer>(n_static/3));
+				}
 			}
 			
 			if(pathFileForbiddenStatic != null)
@@ -812,28 +886,35 @@ public class Scores {
 				fillForbiddenOrMandatoryLists(pathFileMandatoryStatic, observations, observationsStatic, mandatoryStaticParents);
 			
 			// Check error conditions
-			for(int i = 0; i < n; i++) {
-				List<Integer> forbidden = forbiddenStaticParents.get(i);
-				List<Integer> mandatory = mandatoryStaticParents.get(i);
+			for(int t=0; t<numTransitions; t++) {
 				
-				if(mandatory.size() > maxStaticParents) {
-					System.err.println("Error: Cannot make number of mandatory staticParents > maxStaticParents in att " + observations.getAttributes().get(i).getName());
-					System.exit(1);
-				}
-				for(Integer elem : forbidden) {
-					if(mandatory.contains(elem)) {
-						System.err.println("Error: Cannot have same static node as mandatory and forbidden parent of att " + observations.getAttributes().get(i).getName());
+				List<List<Integer>> forbidden_timestep = forbiddenStaticParents.get(t);
+				List<List<Integer>> mandatory_timestep = mandatoryStaticParents.get(t);
+				
+				for(int i = 0; i < n; i++) {
+					List<Integer> forbidden = forbidden_timestep.get(i);
+					List<Integer> mandatory = mandatory_timestep.get(i);
+					
+					if(mandatory.size() > maxStaticParents) {
+						System.err.println("Error: Cannot make number of mandatory staticParents > maxStaticParents in att " + observations.getAttributes().get(i).getName());
 						System.exit(1);
+					}
+					for(Integer elem : forbidden) {
+						if(mandatory.contains(elem)) {
+							System.err.println("Error: Cannot have same static node as mandatory and forbidden parent of att " + observations.getAttributes().get(i).getName());
+							System.exit(1);
+						}
 					}
 				}
 			}
+			
 		}
 		
 		return true;
 		
 	}
 	
-	public void fillForbiddenOrMandatoryLists(String pathToFile, Observations observations, ObservationsStatic observationsStatic, List<List<Integer>> listsToFill) {
+	public void fillForbiddenOrMandatoryLists(String pathToFile, Observations observations, ObservationsStatic observationsStatic, List<List<List<Integer>>> listsToFill) {
 		
 		// Create map with keys the variable names and values their respective indexes in attributes array
 		Map<String, Integer> nameToIndx = new HashMap<String, Integer>();
@@ -853,6 +934,9 @@ public class Scores {
 			}
 		}
 		
+		int numTransitions = stationaryProcess ? 1 : observations.numTransitions();
+		int markovLag = observations.getMarkovLag();
+		
 		try {
 
 			// open and parse the useful observations csv file
@@ -869,19 +953,35 @@ public class Scores {
 				dataLine = li.next();
 
 				// check for line sanity
-				if (dataLine.length < 2) {
-					System.err.println("Error: File " + pathToFile + " badly formatted. Line has len < 2.");
+				if (dataLine.length < 3) {
+					System.err.println("Error: File " + pathToFile + " badly formatted. Line has len < 3.");
 					System.exit(1);
 				}
 				
-				if(nameToIndx.containsKey(dataLine[0]) == false) {
-					System.err.println("Error: File " + pathToFile + " badly formatted. " + dataLine[0] + " is not a dynamic attribute.");
+				int timeStepInInput = -1;
+				try {
+					timeStepInInput = Integer.parseInt(dataLine[0]);
+				} catch (NumberFormatException e) {
+					System.err.println("Error: File " + pathToFile + " badly formatted. " + dataLine[0] + " is not a valid timestep.");
 					System.exit(1);
 				}
 				
-				int child = nameToIndx.get(dataLine[0]);
+				if( (timeStepInInput-markovLag) < 0 || (timeStepInInput-markovLag) >= numTransitions ) {
+					System.err.println("Error: File " + pathToFile + " badly formatted. " + dataLine[0] + " is not a valid timestep.");
+					System.exit(1);
+				}
 				
-				for(int i=1; i<dataLine.length; i++) {
+				int t = timeStepInInput - markovLag;
+				
+				
+				if(nameToIndx.containsKey(dataLine[1]) == false) {
+					System.err.println("Error: File " + pathToFile + " badly formatted. " + dataLine[1] + " is not a dynamic attribute.");
+					System.exit(1);
+				}
+				
+				int child = nameToIndx.get(dataLine[1]);
+				
+				for(int i=2; i<dataLine.length; i++) {
 					
 					if(observationsStatic == null) { // Case where putting the forbidden/mandatory dynamic parents
 						if(nameToIndx.containsKey(dataLine[i]) == false) {
@@ -890,7 +990,7 @@ public class Scores {
 						}
 						
 						// add forbidden/mandatory relation dataline[i]-->dataline[0]
-						listsToFill.get(child).add(nameToIndx.get(dataLine[i]));
+						listsToFill.get(t).get(child).add(nameToIndx.get(dataLine[i]));
 					
 					} else { // Case where putting the forbidden/mandatory static parents
 						if(nameToIndxStatic.containsKey(dataLine[i]) == false) {
@@ -899,7 +999,7 @@ public class Scores {
 						}
 						
 						// add forbidden/mandatory relation dataline[i]-->dataline[0]
-						listsToFill.get(child).add(nameToIndxStatic.get(dataLine[i]));
+						listsToFill.get(t).get(child).add(nameToIndxStatic.get(dataLine[i]));
 					}
 					
 				}
