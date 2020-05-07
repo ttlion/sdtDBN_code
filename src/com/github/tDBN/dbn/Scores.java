@@ -220,12 +220,18 @@ public class Scores {
 			List<List<List<Integer>>> listsInTransition = new ArrayList<List<List<Integer>>>(n); // 1 per node
 			parentSets.add(listsInTransition);
 			
+			List<List<Integer>> forbiddenParentsPast_timestep = forbiddenParentsPast.get(t);
+			List<List<Integer>> mandatoryParentsPast_timestep = mandatoryParentsPast.get(t);
+			
 			for(int i=0; i < n; i++) { // For each node
 				List<List<Integer>> listsOfNodeInTimestep = new ArrayList<List<Integer>>(size);
 				listsInTransition.add(listsOfNodeInTimestep);
 				
+				List<Integer> forbiddenParentsPast_node = forbiddenParentsPast_timestep.get(i);
+				List<Integer> mandatoryParentsPast_node = mandatoryParentsPast_timestep.get(i);
+				
 				for (int k = 1; k <= p; k++) { // fill the created list
-					generateCombinations(n * markovLag, k, listsOfNodeInTimestep, forbiddenParentsPast.get(t).get(i), mandatoryParentsPast.get(t).get(i), n);
+					generateCombinations(n * markovLag, k, listsOfNodeInTimestep, forbiddenParentsPast_node, mandatoryParentsPast_node, n);
 				}
 			}
 		}
@@ -263,14 +269,20 @@ public class Scores {
 				List<List<List<Integer>>> listsInTransition_static = new ArrayList<List<List<Integer>>>(n); // 1 per node
 				staticSets.add(listsInTransition_static);
 				
+				List<List<Integer>> forbiddenStaticParents_timestep = forbiddenStaticParents.get(t);
+				List<List<Integer>> mandatoryStaticParents_timestep = mandatoryStaticParents.get(t);
+				
 				for(int i=0; i < n; i++) {
 					List<List<Integer>> listsOfNodeInTimestep_static = new ArrayList<List<Integer>>(sizeStatic);
 					listsInTransition_static.add(listsOfNodeInTimestep_static);
 					
-					hasMandatoryStatic[t][i] = (mandatoryStaticParents.get(t).get(i).size() != 0); // fill this array to be used in the evaluateWithStatic method
+					List<Integer> forbiddenStaticParents_node = forbiddenStaticParents_timestep.get(i);
+					List<Integer> mandatoryStaticParents_node = mandatoryStaticParents_timestep.get(i);
+					
+					hasMandatoryStatic[t][i] = (mandatoryStaticParents_node.size() != 0); // fill this array to be used in the evaluateWithStatic method
 					
 					for (int k = 1; k <= b; k++) { // fill the created list
-						generateCombinations(n_static, k, listsOfNodeInTimestep_static, forbiddenStaticParents.get(t).get(i), mandatoryStaticParents.get(t).get(i), n_static);
+						generateCombinations(n_static, k, listsOfNodeInTimestep_static, forbiddenStaticParents_node, mandatoryStaticParents_node, n_static);
 					}
 				}
 			}
