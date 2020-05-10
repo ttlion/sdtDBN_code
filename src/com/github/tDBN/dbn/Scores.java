@@ -152,81 +152,11 @@ public class Scores {
 			System.exit(1);
 		}
 		
-//		int aaaa = stationaryProcess ? 1 : observations.numTransitions();
-//		System.out.println("\tForbidden Lists parents past:");
-//		for(int t=0; t<aaaa; t++) {
-//			System.out.println("\t\tTimestep " + (t+markovLag) );
-//			for(int i=0; i<n; i++) {
-//				System.out.print("\t\t\tNo " + observations.getAttributes().get(i).getName() + ": [");
-//				for(Integer elem : forbiddenParentsPast.get(t).get(i)) System.out.print(observations.getAttributes().get(elem%n).getName() + "[" + (t + elem/n) +"]" + ", ");
-//				System.out.println("]");
-//			}
-//		}
-//		System.out.println("\n\n");
-//		
-//		System.out.println("\tMandatory Lists parents past:");
-//		for(int t=0; t<aaaa; t++) {
-//			System.out.println("\t\tTimestep " + (t+markovLag) );
-//			for(int i=0; i<n; i++) {
-//				System.out.print("\t\t\tNo " + observations.getAttributes().get(i).getName() + ": [");
-//				for(Integer elem : mandatoryParentsPast.get(t).get(i)) System.out.print(observations.getAttributes().get(elem%n).getName() + "[" + (t + elem/n) +"]" + ", ");
-//				System.out.println("]");
-//			}
-//		}
-//		System.out.println("\n\n");
-//		
-//		if(observStatic != null) {
-//			System.out.println("\tForbidden Lists parents static:");
-//			for(int t=0; t<aaaa; t++) {
-//				System.out.println("\t\tTimestep " + (t+markovLag) );
-//				for(int i=0; i<n; i++) {
-//					System.out.print("\t\t\tNo " + observations.getAttributes().get(i).getName() + ": [");
-//					for(Integer elem : forbiddenStaticParents.get(t).get(i)) System.out.print(observStatic.getAttributes().get(elem).getName() + ", ");
-//					System.out.println("]");
-//				}
-//			}
-//			System.out.println("\n\n");
-//			
-//			System.out.println("\tMandatory Lists parents static:");
-//			for(int t=0; t<aaaa; t++) {
-//				System.out.println("\t\tTimestep " + (t+markovLag) );
-//				for(int i=0; i<n; i++) {
-//					System.out.print("\t\t\tNo " + observations.getAttributes().get(i).getName() + ": [");
-//					for(Integer elem : mandatoryStaticParents.get(t).get(i)) System.out.print(observStatic.getAttributes().get(elem).getName() + ", ");
-//					System.out.println("]");
-//				}
-//			}
-//			System.out.println("\n\n");
-//		}
-		
 		ret = fillForbiddenOrMandatoryLists_sameTimestep(observations, pathFileForbiddenDyn_sameTimestep, pathFileMandatoryDyn_sameTimestep);
 		if(ret == false) {
 			System.out.println("Error with forbidden or mandatory files of the same timestep!");
 			System.exit(1);
 		}
-		
-//		int aaaa = stationaryProcess ? 1 : observations.numTransitions();
-//		System.out.println("\tForbidden sets parents same timestep:");
-//		for(int t=0; t<aaaa; t++) {
-//			System.out.println("\t\tTimestep " + (t+markovLag) );
-//			for(int i=0; i<n; i++) {
-//				System.out.print("\t\t\tNo " + observations.getAttributes().get(i).getName() + ": [");
-//				for(Integer elem : forbiddenParentsSameTimestep.get(t).get(i)) System.out.print(observations.getAttributes().get(elem).getName() + ", ");
-//				System.out.println("]");
-//			}
-//		}
-//		System.out.println("\n\n");
-//		
-//		System.out.println("\tMandatory sets parents same timestep:");
-//		for(int t=0; t<aaaa; t++) {
-//			System.out.println("\t\tTimestep " + (t+markovLag) );
-//			for(int i=0; i<n; i++) {
-//				System.out.print("\t\t\tNo " + observations.getAttributes().get(i).getName() + ": [");
-//				for(Integer elem : mandatoryParentsSameTimestep.get(t).get(i)) System.out.print(observations.getAttributes().get(elem).getName() + ", ");
-//				System.out.println("]");
-//			}
-//		}
-//		System.out.println("\n\n");
 		
 		// calculate sum_i=1^k nCi
 		int size = n * markovLag;
@@ -260,21 +190,6 @@ public class Scores {
 				}
 			}
 		}
-		
-//		System.out.println("Parent sets:");
-//		for(int t=0 ; t<numTransitions; t++) {
-//			System.out.println("Timestep " + (t+markovLag));
-//			for(int i=0; i < n; i++) {
-//				System.out.println("\t Node " + observations.getAttributes().get(i).getName());
-//				for (List<Integer> list : parentSets.get(t).get(i)) { // fill the created list
-//					System.out.print("\t\t[ ");
-//					for(Integer elem : list) {
-//						System.out.print(observations.getAttributes().get(elem%n).getName() + "[" + (t + elem/n) + "]" +", ");
-//					}
-//					System.out.println("]");
-//				}
-//			}
-//		}
 		
 		if(observStatic != null) {
 			
@@ -311,21 +226,6 @@ public class Scores {
 					}
 				}
 			}
-			
-//			System.out.println("static parent sets:");
-//			for(int t=0 ; t<numTransitions; t++) {
-//				System.out.println("timestep " + (t+markovLag));
-//				for(int i=0; i < n; i++) {
-//					System.out.println("\t node " + observations.getAttributes().get(i).getName());
-//					for (List<Integer> list : staticSets.get(t).get(i)) { // fill the created list
-//						System.out.print("\t\t[ ");
-//						for(Integer elem : list) {
-//							System.out.print(observStatic.getAttributes().get(elem%n_static).getName() + ", ");
-//						}
-//						System.out.println("]");
-//					}
-//				}
-//			}
 			
 		}
 		
