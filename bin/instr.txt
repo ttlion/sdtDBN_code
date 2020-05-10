@@ -1,1 +1,1 @@
-jar cfm tdbn.jar MANIFEST.MF *
+jar cfm sdtDBN.jar MANIFEST.MF *
