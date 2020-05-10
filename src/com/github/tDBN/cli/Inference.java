@@ -231,6 +231,7 @@ public class Inference {
 			Observations o = null;
 			ObservationsStatic staticObservations = null;
 			
+			// Parse all the files with restrictions
 			String mustNotAppear_dynPast_filename = cmd.hasOption("mNotA_dynPast") == true ? cmd.getOptionValue("mustNotAppear_dynPast") : null;
 			String mustAppear_dynPast_filename = cmd.hasOption("mA_dynPast") == true ? cmd.getOptionValue("mustAppear_dynPast") : null;
 			String mustNotAppear_static_filename = cmd.hasOption("mNotA_static") == true ? cmd.getOptionValue("mustNotAppear_static") : null;
