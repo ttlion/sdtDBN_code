@@ -80,28 +80,51 @@ public class Scores {
 	/**
 	 * A list of all possible sets of dynamic parent nodes. Set cardinality lies within
 	 * the range [1, maxParents].
+	 * There is a list for each node of the network. parentSets.get(t).get(i) allows
+	 * getting all possible sets of dynamic parents of node Xi[t].
 	 */
 	private List<List<List<List<Integer>>>> parentSets;
 	
 	/**
 	 * A list of all possible sets of static parent nodes. Set cardinality lies within
 	 * the range [1, maxStaticParents].
+	 * There is a list for each node of the network. staticSets.get(t).get(i) allows
+	 * getting all possible sets of static parents of node Xi[t].
 	 */
 	private List<List<List<List<Integer>>>> staticSets;
 
 	/**
-	 * Each attribute has its lists of either dynamic (from previous timesteps or the same timestep)
-	 * or static nodes that must be parents or that cannot be parents
+	 * forbiddenParentsPast.get(t).get(i) has, for node Xi[t], the forbidden parents from previous timesteps
 	 */
-	private List<List<List<Integer>>> forbiddenParentsPast; // This can simply be List<List<List<>>> because only used in the initial (no computationally expensive) part
+	private List<List<List<Integer>>> forbiddenParentsPast; // Is List<List<List<>>> because only used in the initial (no computationally expensive) part
+	
+	/**
+	 * mandatoryParentsPast.get(t).get(i) has, for node Xi[t], the mandatory parents from previous timesteps
+	 */
 	private List<List<List<Integer>>> mandatoryParentsPast;
-	private List<List<Set<Integer>>> forbiddenParentsSameTimestep; // This must be List<List<Set<>>> because it will be used in each iteration of evaluate cycle
+	
+	/**
+	 * forbiddenParentsSameTimestep.get(t).get(i) has, for node Xi[t], the forbidden parents from the same timestep
+	 */
+	private List<List<Set<Integer>>> forbiddenParentsSameTimestep; // Is List<List<Set<>>> because it will be used in each iteration of evaluate cycle
+	
+	/**
+	 * mandatoryParentsSameTimestep.get(t).get(i) has, for node Xi[t], the mandatory parents from the same timestep
+	 */
 	private List<List<Set<Integer>>> mandatoryParentsSameTimestep;
+	
+	/**
+	 * forbiddenStaticParents.get(t).get(i) has, for node Xi[t], the forbidden static parents
+	 */
 	private List<List<List<Integer>>> forbiddenStaticParents;
+	
+	/**
+	 * mandatoryStaticParents.get(t).get(i) has, for node Xi[t], the mandatory static parents
+	 */
 	private List<List<List<Integer>>> mandatoryStaticParents;
 	
-	/*
-	 *  Array with size n, where each position [i] is true if X[i] has at least 1 mandatory static parent, false otherwise
+	/**
+	 *  2D Array with size n, where each position [t][i] is true if Xi[t] has at least 1 mandatory static parent, false otherwise
 	 */
 	private boolean[][] hasMandatoryStatic; 
 
@@ -172,20 +195,20 @@ public class Scores {
 		parentSets = new ArrayList<List<List<List<Integer>>>>(numTransitions); // 1 set of lists per timestep
 		
 		for(int t=0 ; t<numTransitions; t++) { // For each transition
-			List<List<List<Integer>>> listsInTransition = new ArrayList<List<List<Integer>>>(n); // 1 per node
+			List<List<List<Integer>>> listsInTransition = new ArrayList<List<List<Integer>>>(n); // 1 per node for each transition t
 			parentSets.add(listsInTransition);
 			
 			List<List<Integer>> forbiddenParentsPast_timestep = forbiddenParentsPast.get(t);
 			List<List<Integer>> mandatoryParentsPast_timestep = mandatoryParentsPast.get(t);
 			
-			for(int i=0; i < n; i++) { // For each node
+			for(int i=0; i < n; i++) { // For each node, generate its possible dynamic parents sets
 				List<List<Integer>> listsOfNodeInTimestep = new ArrayList<List<Integer>>(size);
 				listsInTransition.add(listsOfNodeInTimestep);
 				
-				List<Integer> forbiddenParentsPast_node = forbiddenParentsPast_timestep.get(i);
-				List<Integer> mandatoryParentsPast_node = mandatoryParentsPast_timestep.get(i);
+				List<Integer> forbiddenParentsPast_node = forbiddenParentsPast_timestep.get(i); // forbidden parents from past of node Xi[t]
+				List<Integer> mandatoryParentsPast_node = mandatoryParentsPast_timestep.get(i); // mandatory parents from past of node Xi[t]
 				
-				for (int k = 1; k <= p; k++) { // fill the created list
+				for (int k = 1; k <= p; k++) { // generate possible parent sets with cardinality k
 					generateCombinations(n * markovLag, k, listsOfNodeInTimestep, forbiddenParentsPast_node, mandatoryParentsPast_node);
 				}
 			}
@@ -193,7 +216,7 @@ public class Scores {
 		
 		if(observStatic != null) {
 			
-			int sizeStatic = n_static;
+			int sizeStatic = n_static; // calculate sum_i=1^k nCi (same as in dynamic)
 			for (int previous = n_static, i = 2; i <= b; i++) {
 				int current = previous * (n_static - i + 1) / i;
 				sizeStatic += current;
@@ -205,23 +228,23 @@ public class Scores {
 			// generate all possible static parents sets
 			staticSets = new ArrayList<List<List<List<Integer>>>>(numTransitions); // 1 set of lists per timestep
 			
-			for(int t=0 ; t<numTransitions; t++) {
-				List<List<List<Integer>>> listsInTransition_static = new ArrayList<List<List<Integer>>>(n); // 1 per node
+			for(int t=0 ; t<numTransitions; t++) { // For each timestep
+				List<List<List<Integer>>> listsInTransition_static = new ArrayList<List<List<Integer>>>(n); // 1 per node for each transition t
 				staticSets.add(listsInTransition_static);
 				
 				List<List<Integer>> forbiddenStaticParents_timestep = forbiddenStaticParents.get(t);
 				List<List<Integer>> mandatoryStaticParents_timestep = mandatoryStaticParents.get(t);
 				
-				for(int i=0; i < n; i++) {
+				for(int i=0; i < n; i++) { // For each node, generate its possible static parents sets
 					List<List<Integer>> listsOfNodeInTimestep_static = new ArrayList<List<Integer>>(sizeStatic);
 					listsInTransition_static.add(listsOfNodeInTimestep_static);
 					
-					List<Integer> forbiddenStaticParents_node = forbiddenStaticParents_timestep.get(i);
-					List<Integer> mandatoryStaticParents_node = mandatoryStaticParents_timestep.get(i);
+					List<Integer> forbiddenStaticParents_node = forbiddenStaticParents_timestep.get(i); // forbidden static parents of node Xi[t]
+					List<Integer> mandatoryStaticParents_node = mandatoryStaticParents_timestep.get(i); // mandatory static parents of node Xi[t]
 					
 					hasMandatoryStatic[t][i] = (mandatoryStaticParents_node.size() != 0); // fill this array to be used in the evaluateWithStatic method
 					
-					for (int k = 1; k <= b; k++) { // fill the created list
+					for (int k = 1; k <= b; k++) { // generate possible parent sets with cardinality k
 						generateCombinations(n_static, k, listsOfNodeInTimestep_static, forbiddenStaticParents_node, mandatoryStaticParents_node);
 					}
 				}
@@ -299,12 +322,12 @@ public class Scores {
 			// System.out.println("evaluating score in transition " + t + "/" +
 			// numTransitions);
 
-			List<List<List<Integer>>> listsInTransition = parentSets.get(t);
+			List<List<List<Integer>>> listsInTransition = parentSets.get(t); // Get all lists with possible parents sets of nodes from past for nodes in timestep t
 
 			for (int i = 0; i < n; i++) {
 				// System.out.println("evaluating node " + i + "/" + n);
 				double bestScore = Double.NEGATIVE_INFINITY;
-				for (List<Integer> parentSet : listsInTransition.get(i)) {
+				for (List<Integer> parentSet : listsInTransition.get(i)) { // Evaluate each possible parent set from past of node Xi[t]
 					double score = stationaryProcess ? sf.evaluate(observations, parentSet, i, null, null) : sf.evaluate(
 							observations, t, parentSet, i, null, null);
 					// System.out.println("Xi:" + i + " ps:" + parentSet +
@@ -321,16 +344,17 @@ public class Scores {
 				}
 			}
 
+			// Get all lists with possible parents sets of nodes from the same timestep for nodes in timestep t
 			List<Set<Integer>> forbiddenParents_timestep = forbiddenParentsSameTimestep.get(t);
 			List<Set<Integer>> mandatoryParents_timestep = mandatoryParentsSameTimestep.get(t);
 			
 			for (int i = 0; i < n; i++) {
-				Set<Integer> setForbiddenParents = forbiddenParents_timestep.get(i);
-				Set<Integer> setMandatoryParents = mandatoryParents_timestep.get(i);
+				Set<Integer> setForbiddenParents = forbiddenParents_timestep.get(i); // get forbidden nodes from same timestep for node Xi[t]
+				Set<Integer> setMandatoryParents = mandatoryParents_timestep.get(i); // get mandatory nodes from same timestep for node Xi[t]
 				for (int j = 0; j < n; j++) {
 					if (i != j) {
 						double bestScore = Double.NEGATIVE_INFINITY;
-						for (List<Integer> parentSet : listsInTransition.get(i)) {
+						for (List<Integer> parentSet : listsInTransition.get(i)) { // Evaluate each possible parent set from past of node Xi[t]
 							double score = stationaryProcess ? sf.evaluate(observations, parentSet, j, i, null, null) : sf
 									.evaluate(observations, t, parentSet, j, i, null, null);
 							// System.out.println("Xi:" + i + " Xj:" + j +
@@ -343,11 +367,11 @@ public class Scores {
 								numBestScores[i][j]++;
 						}
 
-						if( setForbiddenParents.contains(j) ) { // bias Eij so that j->i does not appear in intra-slice
+						if( setForbiddenParents.contains(j) ) { // If Xj[t]->Xi[t] is forbidden, bias Eij so that Xj[t]->Xi[t] does not appear in intra-slice
 							scoresMatrix[t][i][j] += bestScore - bigNumber;
-						} else if( setMandatoryParents.contains(j) ) { // bias Eij so that j->i appears in intra-slice
+						} else if( setMandatoryParents.contains(j) ) { // If Xj[t]->Xi[t] is mandatory, bias Eij so that Xj[t]->Xi[t] appears in intra-slice
 							scoresMatrix[t][i][j] += bestScore + bigNumber;
-						} else { // do not bias if not neither forbidden nor mandatory
+						} else { // Do not bias if Xj[t]->Xi[t] is not neither forbidden nor mandatory
 							scoresMatrix[t][i][j] += bestScore;
 						}
 
@@ -388,34 +412,36 @@ public class Scores {
 		
 		boolean done = false;
 		while (!done) {
-
+			
+			// By default, there are no forbidden nodes in the set and all mandatory nodes are in the set
 			hasForbidden = false;
 			hasMandatory = true;
 
 			List<Integer> intList = new ArrayList<Integer>(k);
 			for (int i : comb) {
 				intList.add(i);
-				if(listWithForbidden.contains(i) == true) {
+				if(listWithForbidden.contains(i) == true) { // Check if inserted node is forbidden
 					hasForbidden = true;
 					break;
 				}
 			}
 			
-			// Check if all mandatory parents are in the proposed intlist if this intlist is still valid (does not have forbidden)
+			// Check if all mandatory nodes are in the proposed intlist if this intlist is still valid (does not have forbidden)
 			if(hasForbidden == false) {
 				for(Integer elem : listWithMandatory) {
-					if(intList.contains(elem) == false) {
+					if(intList.contains(elem) == false) { // Check if all mandatory parents are in the list
 						hasMandatory = false;
 						break;
 					}
 				}
 			}
 			
-			// intList may be added to desired list because it does not have any forbidden and has all mandatory
+			// intList may be added to desired list because it does not have any forbidden and has all mandatory nodes
 			if(hasForbidden == false && hasMandatory == true) {
 				desiredList.add(intList);
 			}
-
+			
+			// Generate next combination
 			int target = k - 1;
 			comb[target]++;
 			if (comb[target] > n - 1) {
@@ -618,18 +644,18 @@ public class Scores {
 		for (int t = 0; t < numTransitions; t++) {
 			//System.out.println("\n\n\nevaluating score in transition " + t + "/" + numTransitions);
 			
-			List<List<List<Integer>>> listsInTransition = parentSets.get(t);
-			List<List<List<Integer>>> listsInTransition_static = staticSets.get(t);
+			List<List<List<Integer>>> listsInTransition = parentSets.get(t); // Get all lists with possible parents sets of nodes from past for nodes in timestep t
+			List<List<List<Integer>>> listsInTransition_static = staticSets.get(t); // Get all lists with possible parents sets of static nodes for nodes in timestep t
 			
 			for (int i = 0; i < n; i++) {
 				//System.out.println("\n\nevaluating node " + i + "/" + n);
 				double bestScore = Double.NEGATIVE_INFINITY;
-				for (List<Integer> parentSet : listsInTransition.get(i)) { // Try all possible configurations of dynamic parents
+				for (List<Integer> parentSet : listsInTransition.get(i)) { // Evaluate each possible parent set from past of node Xi[t]
 					
 					double score;
 
-					// First, try configuration without any static parents if possible
-					if(hasMandatoryStatic[t][i] == false) { // In this case (no mandatory static parents), the configuration without static parents is possible
+					// Try configuration without any static parents if possible (if no mandatory static parents)
+					if(hasMandatoryStatic[t][i] == false) {
 						score = stationaryProcess ? sf.evaluate(observations, parentSet, i, null, null) : sf.evaluate(
 								observations, t, parentSet, i, null, null);
 					
@@ -642,7 +668,7 @@ public class Scores {
 							numBestScoresPast[i]++;
 					}					
 					
-					// Then try with all possible combinations of static parents
+					// Try all possible combinations of static parents of node Xi[t]
 					for(List<Integer> staticParentSet : listsInTransition_static.get(i)) {
 						
 						score = stationaryProcess ? sf.evaluate(observations, parentSet, i, observStatic, staticParentSet) : sf.evaluate(
@@ -664,21 +690,22 @@ public class Scores {
 				}
 			}
 			
+			// Get all lists with possible parents sets of nodes from the same timestep for nodes in timestep t
 			List<Set<Integer>> forbiddenParents_timestep = forbiddenParentsSameTimestep.get(t);
 			List<Set<Integer>> mandatoryParents_timestep = mandatoryParentsSameTimestep.get(t);
 			
 			for (int i = 0; i < n; i++) {
-				Set<Integer> setForbiddenParents = forbiddenParents_timestep.get(i);
-				Set<Integer> setMandatoryParents = mandatoryParents_timestep.get(i);
+				Set<Integer> setForbiddenParents = forbiddenParents_timestep.get(i); // get forbidden nodes from same timestep for node Xi[t]
+				Set<Integer> setMandatoryParents = mandatoryParents_timestep.get(i); // get mandatory nodes from same timestep for node Xi[t]
 				for (int j = 0; j < n; j++) {
 					if (i != j) {
 						double bestScore = Double.NEGATIVE_INFINITY;
-						for (List<Integer> parentSet : listsInTransition.get(i)) { // Try all possible configurations of dynamic parents
+						for (List<Integer> parentSet : listsInTransition.get(i)) { // Evaluate each possible parent set from past of node Xi[t]
 							
 							double score;
 							
-							// First, try configuration without any static parents if possible
-							if(hasMandatoryStatic[t][i] == false) { // In this case (no mandatory static parents), the configuration without static parents is possible
+							// Try configuration without any static parents if possible (if no mandatory static parents)
+							if(hasMandatoryStatic[t][i] == false) { 
 								score = stationaryProcess ? sf.evaluate(observations, parentSet, j, i, null, null) : sf
 										.evaluate(observations, t, parentSet, j, i, null, null);
 							
@@ -691,7 +718,7 @@ public class Scores {
 									numBestScores[i][j]++;
 							}
 							
-							// Then try with all possible combinations of static parents
+							// Then try all possible combinations of static parents
 							for(List<Integer> staticParentSet : listsInTransition_static.get(i)) {
 
 								score = stationaryProcess ? sf.evaluate(observations, parentSet, j, i, observStatic, staticParentSet) : sf
@@ -708,11 +735,11 @@ public class Scores {
 							
 						}
 
-						if( setForbiddenParents.contains(j) ) { // bias Eij so that j->i does not appear in intra-slice
+						if( setForbiddenParents.contains(j) ) { // If Xj[t]->Xi[t] is forbidden, bias Eij so that Xj[t]->Xi[t] does not appear in intra-slice
 							scoresMatrix[t][i][j] += bestScore - bigNumber;
-						} else if( setMandatoryParents.contains(j) ) { // bias Eij so that j->i appears in intra-slice
+						} else if( setMandatoryParents.contains(j) ) { // If Xj[t]->Xi[t] is mandatory, bias Eij so that Xj[t]->Xi[t] appears in intra-slice
 							scoresMatrix[t][i][j] += bestScore + bigNumber;
-						} else { // do not bias if not neither forbidden nor mandatory
+						} else { // Do not bias if Xj[t]->Xi[t] is not neither forbidden nor mandatory
 							scoresMatrix[t][i][j] += bestScore;
 						}
 
@@ -741,48 +768,56 @@ public class Scores {
 	}
 
 
-	
+	/**
+	 * Method to create and fill (from given input files) the forbidden and mandatory parents from previous timesteps 
+	 * and static parents for all nodes Xi[t] for every i and every t.
+	 */
 	public boolean fillForbiddenOrMandatoryLists(Observations observations, ObservationsStatic observationsStatic, String pathFileForbiddenDyn, String pathFileMandatoryDyn, String pathFileForbiddenStatic, String pathFileMandatoryStatic) {
 		
-		if(observations == null)
+		if(observations == null) // If no observations given, there are not any attributes/nodes...
 			return false;
 		
-		// Always init even if not filling, for the program not to crash
+		// Get some values from the observations
 		int n = observations.numAttributes();
 		int numTransitions = stationaryProcess ? 1 : observations.numTransitions();
 		int markovLag = observations.getMarkovLag();
 		
+		// Always init all lists even if not filling, for the program not to crash (when checking if a value is in list, checking lists sizes, etc.)
+		
+		// Creating the first dimension (temporal dimension)
 		forbiddenParentsPast = new ArrayList<List<List<Integer>>>(numTransitions);
 		mandatoryParentsPast = new ArrayList<List<List<Integer>>>(numTransitions);
 		
-		for(int t=0; t<numTransitions; t++) {
-			List<List<Integer>> forbiddenParentsPast_timestep = new ArrayList<List<Integer>>(n);
+		for(int t=0; t<numTransitions; t++) { // For each transition t
+			List<List<Integer>> forbiddenParentsPast_timestep = new ArrayList<List<Integer>>(n); // Create the forbidden and mandatory parents from past for all n nodes in t 
 			List<List<Integer>> mandatoryParentsPast_timestep = new ArrayList<List<Integer>>(n);
 			
 			forbiddenParentsPast.add(forbiddenParentsPast_timestep);
 			mandatoryParentsPast.add(mandatoryParentsPast_timestep);
 			
-			for(int i = 0; i < n; i++) {
+			for(int i = 0; i < n; i++) { // Create the forbidden and mandatory parents from past for each node Xi[t]
 				forbiddenParentsPast_timestep.add(new ArrayList<Integer>(n/3));
 				mandatoryParentsPast_timestep.add(new ArrayList<Integer>(n/3));
 			}
 		}
 		
+		// According to files being or not provided, fill proper data structure
 		if(pathFileForbiddenDyn != null)
 			fillForbiddenOrMandatoryLists(pathFileForbiddenDyn, observations, null, forbiddenParentsPast);
 		if(pathFileMandatoryDyn != null)
 			fillForbiddenOrMandatoryLists(pathFileMandatoryDyn, observations, null, mandatoryParentsPast);
 		
 		// Check error conditions
-		for(int t=0; t<numTransitions; t++) {
+		for(int t=0; t<numTransitions; t++) { // For each transition
 			
 			List<List<Integer>> forbidden_timestep = forbiddenParentsPast.get(t);
 			List<List<Integer>> mandatory_timestep = mandatoryParentsPast.get(t);
 			
 			for(int i = 0; i < n; i++) {
-				List<Integer> forbidden = forbidden_timestep.get(i);
-				List<Integer> mandatory = mandatory_timestep.get(i);
+				List<Integer> forbidden = forbidden_timestep.get(i); // All forbidden parents from previous timesteps for node Xi[t]
+				List<Integer> mandatory = mandatory_timestep.get(i); // All mandatory parents from previous timesteps for node Xi[t]
 				
+				// Error conditions
 				if(forbidden.size() >= n*markovLag) {
 					System.err.println("Error: Cannot forbid all parents from past in att " + observations.getAttributes().get(i).getName());
 					System.exit(1);
@@ -801,42 +836,48 @@ public class Scores {
 			
 		}
 		
-		
+		// If there are static attributes/observations, proper static data structures must be created and eventually filled
 		if(observationsStatic != null) {
-			// Always init even if not filling, for the program not to crash
+			
+			// Get n_static from the static observations
 			int n_static = observationsStatic.numAttributes();
 			
+			// Always init all lists even if not filling, for the program not to crash (when checking if a value is in list, checking lists sizes, etc.)
+			
+			// Creating the first dimension (temporal dimension)
 			forbiddenStaticParents = new ArrayList<List<List<Integer>>>(numTransitions);
 			mandatoryStaticParents = new ArrayList<List<List<Integer>>>(numTransitions);
 			
-			for(int t=0; t<numTransitions; t++) {
-				List<List<Integer>> forbiddenStatic_timestep = new ArrayList<List<Integer>>(n);
+			for(int t=0; t<numTransitions; t++) { // For all transitions t
+				List<List<Integer>> forbiddenStatic_timestep = new ArrayList<List<Integer>>(n); // Create the forbidden and mandatory static parents for all n nodes in t 
 				List<List<Integer>> mandatoryStatic_timestep = new ArrayList<List<Integer>>(n);
 				
 				forbiddenStaticParents.add(forbiddenStatic_timestep);
 				mandatoryStaticParents.add(mandatoryStatic_timestep);
 				
-				for(int i = 0; i < n; i++) {
+				for(int i = 0; i < n; i++) { // Create the forbidden and mandatory static parents for each node Xi[t]
 					forbiddenStatic_timestep.add(new ArrayList<Integer>(n_static/3));
 					mandatoryStatic_timestep.add(new ArrayList<Integer>(n_static/3));
 				}
 			}
 			
+			// According to files being or not provided, fill proper data structure
 			if(pathFileForbiddenStatic != null)
 				fillForbiddenOrMandatoryLists(pathFileForbiddenStatic, observations, observationsStatic, forbiddenStaticParents);
 			if(pathFileMandatoryStatic != null)
 				fillForbiddenOrMandatoryLists(pathFileMandatoryStatic, observations, observationsStatic, mandatoryStaticParents);
 			
 			// Check error conditions
-			for(int t=0; t<numTransitions; t++) {
+			for(int t=0; t<numTransitions; t++) { // For each transition
 				
-				List<List<Integer>> forbidden_timestep = forbiddenStaticParents.get(t);
-				List<List<Integer>> mandatory_timestep = mandatoryStaticParents.get(t);
+				List<List<Integer>> forbidden_timestep = forbiddenStaticParents.get(t); // All forbidden static parents for node Xi[t]
+				List<List<Integer>> mandatory_timestep = mandatoryStaticParents.get(t); // All mandatory static parents for node Xi[t]
 				
 				for(int i = 0; i < n; i++) {
 					List<Integer> forbidden = forbidden_timestep.get(i);
 					List<Integer> mandatory = mandatory_timestep.get(i);
 					
+					// Error conditions
 					if(mandatory.size() > maxStaticParents) {
 						System.err.println("Error: Cannot make number of mandatory staticParents > maxStaticParents in att " + observations.getAttributes().get(i).getName());
 						System.exit(1);
@@ -856,9 +897,12 @@ public class Scores {
 		
 	}
 	
+	/**
+	 * Method to fill from given input file, the proper data structure with parent nodes associated with each node Xi[t] as given in the input file
+	 */
 	public void fillForbiddenOrMandatoryLists(String pathToFile, Observations observations, ObservationsStatic observationsStatic, List<List<List<Integer>>> listsToFill) {
 		
-		// Create map with keys the variable names and values their respective indexes in attributes array
+		// Create map with keys the variable names, and values their respective indexes in attributes array
 		Map<String, Integer> nameToIndx = new HashMap<String, Integer>();
 		int cnt=0;
 		for (Attribute att : observations.getAttributes()) {
@@ -866,7 +910,7 @@ public class Scores {
 			cnt++;
 		}
 		
-		// Create map for static attributes names if static exist
+		// Create map for static attributes names if static exist (keys: variable names, values: indexes)
 		Map<String, Integer> nameToIndxStatic = new HashMap<String, Integer>();
 		if(observationsStatic != null) {
 			cnt=0;
@@ -876,6 +920,7 @@ public class Scores {
 			}
 		}
 		
+		// Get some values from the observations
 		int n = observations.numAttributes();
 		int numTransitions = stationaryProcess ? 1 : observations.numTransitions();
 		int markovLag = observations.getMarkovLag();
@@ -896,8 +941,8 @@ public class Scores {
 				dataLine = li.next();
 
 				// check for line sanity
-				if(observationsStatic == null) {
-					if (dataLine.length < 4) { // Dynamic file must have at least 4 elements in each line
+				if(observationsStatic == null) { // If file with dynamic parents
+					if (dataLine.length < 4) { // Must have at least 4 elements in each line
 						System.err.println("Error: File " + pathToFile + " badly formatted. Line has len < 4.");
 						System.exit(1);
 					}
@@ -905,13 +950,14 @@ public class Scores {
 						System.err.println("Error: File " + pathToFile + " badly formatted. Line does not have an even number of elements.");
 						System.exit(1);
 					}
-				} else { // Static file must have at least 3 elements in each line
-					if (dataLine.length < 3) {
+				} else { // If file with dynamic parents 
+					if (dataLine.length < 3) { // Must have at least 3 elements in each line
 						System.err.println("Error: File " + pathToFile + " badly formatted. Line has len < 3.");
 						System.exit(1);
 					}
 				}
 				
+				// Parse timestep of the desired child node
 				int timeStepInInput = -1;
 				try {
 					timeStepInInput = Integer.parseInt(dataLine[0]);
@@ -920,32 +966,33 @@ public class Scores {
 					System.exit(1);
 				}
 				
-				if( (timeStepInInput-markovLag) < 0 || (timeStepInInput-markovLag) >= numTransitions ) {
+				if( (timeStepInInput-markovLag) < 0 || (timeStepInInput-markovLag) >= numTransitions ) { // Check if ok value
 					System.err.println("Error: File " + pathToFile + " badly formatted. " + dataLine[0] + " is not a valid timestep.");
 					System.exit(1);
 				}
 				
+				// Get transition t (always done from the actual timestep and the markovLag)
 				int t = timeStepInInput - markovLag;
 				
-				
+				// Check if given attribute exists
 				if(nameToIndx.containsKey(dataLine[1]) == false) {
 					System.err.println("Error: File " + pathToFile + " badly formatted. " + dataLine[1] + " is not a dynamic attribute.");
 					System.exit(1);
 				}
 				
-				int child = nameToIndx.get(dataLine[1]);
+				int child = nameToIndx.get(dataLine[1]); // Get child index (the i of Xi)
 				
-				if(observationsStatic == null) { // Case where putting the forbidden/mandatory dynamic parents
+				if(observationsStatic == null) { // If file with dynamic parents
 					
-					for(int i=2; i<dataLine.length; i+=2) {
+					for(int i=2; i<dataLine.length; i+=2) { // Always parse elements 2 by 2 (must always give the attribute and how many timesteps behind current timestep)
 					
-						if(nameToIndx.containsKey(dataLine[i]) == false) {
+						if(nameToIndx.containsKey(dataLine[i]) == false) { // Check if valid attribute
 							System.err.println("Error: File " + pathToFile + " badly formatted. " + dataLine[i] + " is not a valid attribute to consider as dynamic parent.");
 							System.exit(1);
 						}
-						int parent = nameToIndx.get(dataLine[i]);
+						int parent = nameToIndx.get(dataLine[i]); // Get the j of Xj, j range is [0,n[
 						
-						int numberTimestepsBehind = -1000;
+						int numberTimestepsBehind = -1000; // Parse number of timesteps behind (always in position (i+1) of the dataline, after the attribute in position(i) of the dataline )
 						try {
 							numberTimestepsBehind = Integer.parseInt(dataLine[i+1]);
 						} catch (NumberFormatException e) {
@@ -963,22 +1010,23 @@ public class Scores {
 							System.exit(1);
 						}
 						
+						// Get id with range from [0, n*markovLag[, instead of just [0,n[
 						int parentId_withMarkovLagIncluded = parent + (markovLag - Math.abs(numberTimestepsBehind)) * n;
 						
-						// add forbidden/mandatory relation dataline[i]-->dataline[0]
+						// Add forbidden/mandatory relation dataline[i]-->dataline[1] to proper list given as input
 						listsToFill.get(t).get(child).add(parentId_withMarkovLagIncluded);
 					
 					}
 					
-				} else { // Case where putting the forbidden/mandatory static parents
+				} else { // If file with static parents
 					
-					for(int i=2; i<dataLine.length; i++) {
+					for(int i=2; i<dataLine.length; i++) { // Get all static parents in a for cicle
 						if(nameToIndxStatic.containsKey(dataLine[i]) == false) {
 							System.err.println("Error: File " + pathToFile + " badly formatted. " + dataLine[i] + " is not a valid attribute to consider as static parent.");
 							System.exit(1);
 						}
 						
-						// add forbidden/mandatory relation dataline[i]-->dataline[0]
+						// Add forbidden/mandatory relation dataline[i]-->dataline[1] to proper list given as input
 						listsToFill.get(t).get(child).add(nameToIndxStatic.get(dataLine[i]));
 					}
 					
@@ -995,32 +1043,39 @@ public class Scores {
 		return;
 	}
 	
-	
+	/**
+	 * Method to create and fill (from given input files) the forbidden and mandatory parents from the same timestep
+	 * for all nodes Xi[t] for every i and every t.
+	 */
 	public boolean fillForbiddenOrMandatoryLists_sameTimestep(Observations observations, String pathFileForbiddenDyn_sameTimestep, String pathFileMandatoryDyn_sameTimestep) {
 		
-		if(observations == null)
+		if(observations == null) // If no observations given, there are not any attributes/nodes...
 			return false;
 		
-		// Always init even if not filling, for the program not to crash
+		// Get some values from the observations
 		int n = observations.numAttributes();
 		int numTransitions = stationaryProcess ? 1 : observations.numTransitions();
 		
+		// Always init all lists even if not filling, for the program not to crash (when checking if a value is in list, checking lists sizes, etc.)
+		
+		// Creating the first dimension (temporal dimension)
 		forbiddenParentsSameTimestep = new ArrayList<List<Set<Integer>>>(numTransitions);
 		mandatoryParentsSameTimestep = new ArrayList<List<Set<Integer>>>(numTransitions);
 		
-		for(int t=0; t<numTransitions; t++) {
-			List<Set<Integer>> forbiddenParentsSameTimestep_inTimestep = new ArrayList<Set<Integer>>(n);
+		for(int t=0; t<numTransitions; t++) { // For each transition t
+			List<Set<Integer>> forbiddenParentsSameTimestep_inTimestep = new ArrayList<Set<Integer>>(n); // Create the forbidden and mandatory parents from past for all n nodes in t 
 			List<Set<Integer>> mandatoryParentsSameTimestep_inTimestep = new ArrayList<Set<Integer>>(n);
 			
 			forbiddenParentsSameTimestep.add(forbiddenParentsSameTimestep_inTimestep);
 			mandatoryParentsSameTimestep.add(mandatoryParentsSameTimestep_inTimestep);
 			
-			for(int i = 0; i < n; i++) {
+			for(int i = 0; i < n; i++) { // Create the forbidden and mandatory parents from each node Xi[t]
 				forbiddenParentsSameTimestep_inTimestep.add(new HashSet<Integer>(n/3));
 				mandatoryParentsSameTimestep_inTimestep.add(new HashSet<Integer>(n/3));
 			}
 		}
 		
+		// According to files being or not provided, fill proper data structure
 		if(pathFileForbiddenDyn_sameTimestep != null)
 			fillForbiddenOrMandatoryLists_sameTimestep(pathFileForbiddenDyn_sameTimestep, observations, forbiddenParentsSameTimestep);
 		if(pathFileMandatoryDyn_sameTimestep != null)
@@ -1032,9 +1087,10 @@ public class Scores {
 			List<Set<Integer>> mandatory_timestep = mandatoryParentsSameTimestep.get(t);
 			
 			for(int i = 0; i < n; i++) {
-				Set<Integer> forbidden = forbidden_timestep.get(i);
-				Set<Integer> mandatory = mandatory_timestep.get(i);
+				Set<Integer> forbidden = forbidden_timestep.get(i); // All forbidden parents from the same timesteps for node Xi[t]
+				Set<Integer> mandatory = mandatory_timestep.get(i); // All mandatory parents from the same timesteps for node Xi[t] 
 				
+				// Error conditions
 				if(forbidden.size() >= n-1) {
 					if(forbidden.contains(i) == false || forbidden.size() == n ) {
 						System.err.println("Error: Cannot forbid all parents from own timestep in att " + observations.getAttributes().get(i).getName() + ". Check proper parameter to define the root of the tree!");
@@ -1060,6 +1116,9 @@ public class Scores {
 		return true;
 	}
 	
+	/**
+	 * Method to fill from given input file, the proper data structure with parent nodes (from same timestep) associated with each node Xi[t] as given in the input file
+	 */
 	public void fillForbiddenOrMandatoryLists_sameTimestep(String pathToFile, Observations observations, List<List<Set<Integer>>> setsToFill) {
 		
 		// Create map with keys the variable names and values their respective indexes in attributes array
@@ -1070,6 +1129,7 @@ public class Scores {
 			cnt++;
 		}
 		
+		// Get some values from the observations
 		int numTransitions = stationaryProcess ? 1 : observations.numTransitions();
 		int markovLag = observations.getMarkovLag();
 		
@@ -1094,6 +1154,7 @@ public class Scores {
 					System.exit(1);
 				}
 				
+				// Parse timestep of the desired child node
 				int timeStepInInput = -1;
 				try {
 					timeStepInInput = Integer.parseInt(dataLine[0]);
@@ -1107,23 +1168,25 @@ public class Scores {
 					System.exit(1);
 				}
 				
+				// Get transition t (always done from the actual timestep and the markovLag)
 				int t = timeStepInInput - markovLag;
 				
+				// Check if given attribute exists
 				if(nameToIndx.containsKey(dataLine[1]) == false) {
 					System.err.println("Error: File " + pathToFile + " badly formatted. " + dataLine[1] + " is not a dynamic attribute.");
 					System.exit(1);
 				}
 				
-				int child = nameToIndx.get(dataLine[1]);
+				int child = nameToIndx.get(dataLine[1]); // Get the i of Xi, i range is [0,n[
 				
-				for(int i=2; i<dataLine.length; i++) {
+				for(int i=2; i<dataLine.length; i++) { // Parse all given parents from same timesteps
 					
 					if(nameToIndx.containsKey(dataLine[i]) == false) {
 						System.err.println("Error: File " + pathToFile + " badly formatted. " + dataLine[i] + " is not a valid attribute to consider as dynamic parent.");
 						System.exit(1);
 					}
 					
-					// add forbidden/mandatory relation dataline[i]-->dataline[1]
+					// Add forbidden/mandatory relation dataline[i]-->dataline[1] to proper list given as input
 					setsToFill.get(t).get(child).add(nameToIndx.get(dataLine[i]));
 					
 				}
@@ -1141,7 +1204,6 @@ public class Scores {
 	
 
 }
-
 
 
 
