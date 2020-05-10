@@ -158,7 +158,7 @@ public class Scores {
 //			System.out.println("\t\tTimestep " + (t+markovLag) );
 //			for(int i=0; i<n; i++) {
 //				System.out.print("\t\t\tNo " + observations.getAttributes().get(i).getName() + ": [");
-//				for(Integer elem : forbiddenParentsPast.get(t).get(i)) System.out.print(observations.getAttributes().get(elem).getName() + ", ");
+//				for(Integer elem : forbiddenParentsPast.get(t).get(i)) System.out.print(observations.getAttributes().get(elem%n).getName() + "[" + (t + elem/n) +"]" + ", ");
 //				System.out.println("]");
 //			}
 //		}
@@ -169,33 +169,35 @@ public class Scores {
 //			System.out.println("\t\tTimestep " + (t+markovLag) );
 //			for(int i=0; i<n; i++) {
 //				System.out.print("\t\t\tNo " + observations.getAttributes().get(i).getName() + ": [");
-//				for(Integer elem : mandatoryParentsPast.get(t).get(i)) System.out.print(observations.getAttributes().get(elem).getName() + ", ");
+//				for(Integer elem : mandatoryParentsPast.get(t).get(i)) System.out.print(observations.getAttributes().get(elem%n).getName() + "[" + (t + elem/n) +"]" + ", ");
 //				System.out.println("]");
 //			}
 //		}
 //		System.out.println("\n\n");
 //		
-//		System.out.println("\tForbidden Lists parents static:");
-//		for(int t=0; t<aaaa; t++) {
-//			System.out.println("\t\tTimestep " + (t+markovLag) );
-//			for(int i=0; i<n; i++) {
-//				System.out.print("\t\t\tNo " + observations.getAttributes().get(i).getName() + ": [");
-//				for(Integer elem : forbiddenStaticParents.get(t).get(i)) System.out.print(observStatic.getAttributes().get(elem).getName() + ", ");
-//				System.out.println("]");
+//		if(observStatic != null) {
+//			System.out.println("\tForbidden Lists parents static:");
+//			for(int t=0; t<aaaa; t++) {
+//				System.out.println("\t\tTimestep " + (t+markovLag) );
+//				for(int i=0; i<n; i++) {
+//					System.out.print("\t\t\tNo " + observations.getAttributes().get(i).getName() + ": [");
+//					for(Integer elem : forbiddenStaticParents.get(t).get(i)) System.out.print(observStatic.getAttributes().get(elem).getName() + ", ");
+//					System.out.println("]");
+//				}
 //			}
-//		}
-//		System.out.println("\n\n");
-//		
-//		System.out.println("\tMandatory Lists parents static:");
-//		for(int t=0; t<aaaa; t++) {
-//			System.out.println("\t\tTimestep " + (t+markovLag) );
-//			for(int i=0; i<n; i++) {
-//				System.out.print("\t\t\tNo " + observations.getAttributes().get(i).getName() + ": [");
-//				for(Integer elem : mandatoryStaticParents.get(t).get(i)) System.out.print(observStatic.getAttributes().get(elem).getName() + ", ");
-//				System.out.println("]");
+//			System.out.println("\n\n");
+//			
+//			System.out.println("\tMandatory Lists parents static:");
+//			for(int t=0; t<aaaa; t++) {
+//				System.out.println("\t\tTimestep " + (t+markovLag) );
+//				for(int i=0; i<n; i++) {
+//					System.out.print("\t\t\tNo " + observations.getAttributes().get(i).getName() + ": [");
+//					for(Integer elem : mandatoryStaticParents.get(t).get(i)) System.out.print(observStatic.getAttributes().get(elem).getName() + ", ");
+//					System.out.println("]");
+//				}
 //			}
+//			System.out.println("\n\n");
 //		}
-//		System.out.println("\n\n");
 		
 		ret = fillForbiddenOrMandatoryLists_sameTimestep(observations, pathFileForbiddenDyn_sameTimestep, pathFileMandatoryDyn_sameTimestep);
 		if(ret == false) {
@@ -254,7 +256,7 @@ public class Scores {
 				List<Integer> mandatoryParentsPast_node = mandatoryParentsPast_timestep.get(i);
 				
 				for (int k = 1; k <= p; k++) { // fill the created list
-					generateCombinations(n * markovLag, k, listsOfNodeInTimestep, forbiddenParentsPast_node, mandatoryParentsPast_node, n);
+					generateCombinations(n * markovLag, k, listsOfNodeInTimestep, forbiddenParentsPast_node, mandatoryParentsPast_node);
 				}
 			}
 		}
@@ -267,7 +269,7 @@ public class Scores {
 //				for (List<Integer> list : parentSets.get(t).get(i)) { // fill the created list
 //					System.out.print("\t\t[ ");
 //					for(Integer elem : list) {
-//						System.out.print(observations.getAttributes().get(elem%n).getName() + "[" + (elem/n) + "]" +", ");
+//						System.out.print(observations.getAttributes().get(elem%n).getName() + "[" + (t + elem/n) + "]" +", ");
 //					}
 //					System.out.println("]");
 //				}
@@ -305,7 +307,7 @@ public class Scores {
 					hasMandatoryStatic[t][i] = (mandatoryStaticParents_node.size() != 0); // fill this array to be used in the evaluateWithStatic method
 					
 					for (int k = 1; k <= b; k++) { // fill the created list
-						generateCombinations(n_static, k, listsOfNodeInTimestep_static, forbiddenStaticParents_node, mandatoryStaticParents_node, n_static);
+						generateCombinations(n_static, k, listsOfNodeInTimestep_static, forbiddenStaticParents_node, mandatoryStaticParents_node);
 					}
 				}
 			}
@@ -475,7 +477,7 @@ public class Scores {
 	}
 
 	// adapted from http://stackoverflow.com/a/7631893
-	private void generateCombinations(int n, int k, List<List<Integer>> desiredList, List<Integer> listWithForbidden, List<Integer> listWithMandatory, int nbAtts ) {
+	private void generateCombinations(int n, int k, List<List<Integer>> desiredList, List<Integer> listWithForbidden, List<Integer> listWithMandatory) {
 
 		int[] comb = new int[k];
 		for (int i = 0; i < comb.length; i++) {
@@ -491,11 +493,9 @@ public class Scores {
 			hasMandatory = true;
 
 			List<Integer> intList = new ArrayList<Integer>(k);
-			List<Integer> auxNormalizedList = new ArrayList<Integer>(k);
 			for (int i : comb) {
 				intList.add(i);
-				auxNormalizedList.add(i%nbAtts);
-				if(listWithForbidden.contains(i%nbAtts) == true) {
+				if(listWithForbidden.contains(i) == true) {
 					hasForbidden = true;
 					break;
 				}
@@ -504,7 +504,7 @@ public class Scores {
 			// Check if all mandatory parents are in the proposed intlist if this intlist is still valid (does not have forbidden)
 			if(hasForbidden == false) {
 				for(Integer elem : listWithMandatory) {
-					if(auxNormalizedList.contains(elem) == false) {
+					if(intList.contains(elem) == false) {
 						hasMandatory = false;
 						break;
 					}
@@ -850,6 +850,7 @@ public class Scores {
 		// Always init even if not filling, for the program not to crash
 		int n = observations.numAttributes();
 		int numTransitions = stationaryProcess ? 1 : observations.numTransitions();
+		int markovLag = observations.getMarkovLag();
 		
 		forbiddenParentsPast = new ArrayList<List<List<Integer>>>(numTransitions);
 		mandatoryParentsPast = new ArrayList<List<List<Integer>>>(numTransitions);
@@ -882,7 +883,7 @@ public class Scores {
 				List<Integer> forbidden = forbidden_timestep.get(i);
 				List<Integer> mandatory = mandatory_timestep.get(i);
 				
-				if(forbidden.size() >= n) {
+				if(forbidden.size() >= n*markovLag) {
 					System.err.println("Error: Cannot forbid all parents from past in att " + observations.getAttributes().get(i).getName());
 					System.exit(1);
 				}
@@ -975,6 +976,7 @@ public class Scores {
 			}
 		}
 		
+		int n = observations.numAttributes();
 		int numTransitions = stationaryProcess ? 1 : observations.numTransitions();
 		int markovLag = observations.getMarkovLag();
 		
@@ -994,9 +996,20 @@ public class Scores {
 				dataLine = li.next();
 
 				// check for line sanity
-				if (dataLine.length < 3) {
-					System.err.println("Error: File " + pathToFile + " badly formatted. Line has len < 3.");
-					System.exit(1);
+				if(observationsStatic == null) {
+					if (dataLine.length < 4) { // Dynamic file must have at least 4 elements in each line
+						System.err.println("Error: File " + pathToFile + " badly formatted. Line has len < 4.");
+						System.exit(1);
+					}
+					if ((dataLine.length)%2 != 0) { // Length of dynamic file must be even!
+						System.err.println("Error: File " + pathToFile + " badly formatted. Line does not have an even number of elements.");
+						System.exit(1);
+					}
+				} else { // Static file must have at least 3 elements in each line
+					if (dataLine.length < 3) {
+						System.err.println("Error: File " + pathToFile + " badly formatted. Line has len < 3.");
+						System.exit(1);
+					}
 				}
 				
 				int timeStepInInput = -1;
@@ -1022,18 +1035,44 @@ public class Scores {
 				
 				int child = nameToIndx.get(dataLine[1]);
 				
-				for(int i=2; i<dataLine.length; i++) {
+				if(observationsStatic == null) { // Case where putting the forbidden/mandatory dynamic parents
 					
-					if(observationsStatic == null) { // Case where putting the forbidden/mandatory dynamic parents
+					for(int i=2; i<dataLine.length; i+=2) {
+					
 						if(nameToIndx.containsKey(dataLine[i]) == false) {
 							System.err.println("Error: File " + pathToFile + " badly formatted. " + dataLine[i] + " is not a valid attribute to consider as dynamic parent.");
 							System.exit(1);
 						}
+						int parent = nameToIndx.get(dataLine[i]);
+						
+						int numberTimestepsBehind = -1000;
+						try {
+							numberTimestepsBehind = Integer.parseInt(dataLine[i+1]);
+						} catch (NumberFormatException e) {
+							System.err.println("Error: File " + pathToFile + " badly formatted. " + dataLine[i+1] + " is not a valid timestep.");
+							System.exit(1);
+						}
+						
+						if(numberTimestepsBehind == 0) {
+							System.err.println("Error: File " + pathToFile + " badly formatted. " + numberTimestepsBehind + " timesteps behind is not valid (must be at least 1 timestep behind).");
+							System.exit(1);
+						}
+						
+						if( (markovLag - Math.abs(numberTimestepsBehind)) < 0 ) {
+							System.err.println("Error: File " + pathToFile + " badly formatted. " + Math.abs(numberTimestepsBehind) + " timesteps behind is not valid with markovLag " + markovLag);
+							System.exit(1);
+						}
+						
+						int parentId_withMarkovLagIncluded = parent + (markovLag - Math.abs(numberTimestepsBehind)) * n;
 						
 						// add forbidden/mandatory relation dataline[i]-->dataline[0]
-						listsToFill.get(t).get(child).add(nameToIndx.get(dataLine[i]));
+						listsToFill.get(t).get(child).add(parentId_withMarkovLagIncluded);
 					
-					} else { // Case where putting the forbidden/mandatory static parents
+					}
+					
+				} else { // Case where putting the forbidden/mandatory static parents
+					
+					for(int i=2; i<dataLine.length; i++) {
 						if(nameToIndxStatic.containsKey(dataLine[i]) == false) {
 							System.err.println("Error: File " + pathToFile + " badly formatted. " + dataLine[i] + " is not a valid attribute to consider as static parent.");
 							System.exit(1);
