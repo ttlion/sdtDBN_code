@@ -1,0 +1,14 @@
+sdtDBN
+Copyright 2020 Tiago Leão
+
+
+This work uses the tDBN work (http://josemonteiro.github.io/tDBN/).
+Released under the Apache License 2.0
+
+
+This work uses the Apache Commons CLI library (http://commons.apache.org/proper/commons-cli/).
+Copyright 2001-2019 The Apache Software Foundation
+
+
+This work uses the opencsv library (http://opencsv.sourceforge.net/).
+Released under the Apache License 2.0
