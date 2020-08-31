@@ -1,1 +1,1 @@
-jar cfm sdtDBN.jar MANIFEST.MF *
+jar cfm sdtDBN_v0_0_1.jar MANIFEST.MF au/ com/ org/ LICENSE.txt NOTICE.txt
