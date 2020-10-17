@@ -316,7 +316,7 @@ public class Scores {
 		int[] numBestScoresPast = new int[n];
 		int[][] numBestScores = new int[n][n];
 
-		double bigNumber = 10E200;
+		double bigNumber = 1E10;
 
 		for (int t = 0; t < numTransitions; t++) {
 			// System.out.println("evaluating score in transition " + t + "/" +
@@ -639,7 +639,7 @@ public class Scores {
 		int[] numBestScoresPast = new int[n];
 		int[][] numBestScores = new int[n][n];
 
-		double bigNumber = 10E200;
+		double bigNumber = 1E10;
 
 		for (int t = 0; t < numTransitions; t++) {
 			//System.out.println("\n\n\nevaluating score in transition " + t + "/" + numTransitions);
